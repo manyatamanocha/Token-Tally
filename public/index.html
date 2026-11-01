@@ -140,6 +140,10 @@ h2{font-weight:500}
 .acts button:hover,#changes button:hover{background:var(--hover);cursor:pointer}
 #changes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mut);font-size:13px}
 #changes:empty,#notes:empty{display:none}
+h2,.col h3,.st,.tile,#manage h2{text-align:center}
+.st .lls,.mleg{justify-content:center}
+#detail h2{position:relative;display:block;padding:0 64px}
+#detail h2 button{position:absolute;right:0;top:-2px}
 #notes p{margin:0 0 6px;padding:9px 13px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;color:var(--soft)}
 #empty{padding:40px 18px;text-align:center;color:var(--mut)}
 #body{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;min-width:0}
@@ -295,7 +299,7 @@ function strip(s) {
   const items = [
     first,
     ['Total tokens used', fmt(total), `New tokens plus tokens read again. New: ${fmt(s.newTokens)}. Read again: ${fmt(s.rereadTokens)}. One token is about 3/4 of a word.`, line((x) => { const u = statOf(x); return fmt(u.newTokens + u.rereadTokens); })],
-    ['Agents', num(s.agents + s.subagents), tips.agents, `<span class="ll">Main <b>${num(s.agents)}</b></span><span class="ll">Subagents <b>${num(s.subagents)}</b></span>`],
+    ['Agents deployed', num(s.agents + s.subagents), tips.agents, `<span class="ll">Main <b>${num(s.agents)}</b></span><span class="ll">Subagents <b>${num(s.subagents)}</b></span>`],
     ['Days worked', num(s.days), `Days with any work. About ${num(s.hours)} hours in total, estimated from active time.`, line((x) => num(statOf(x).days))],
   ];
   setHTML($('cards'), items.map(([a, b, , l]) => `<div class="st"><div class="sl">${a}</div><div class="sv">${b}</div><div class="lls">${l}</div></div>`).join(''));
