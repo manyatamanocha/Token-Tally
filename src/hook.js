@@ -13,7 +13,7 @@ function readSettings(path) {
 function writeWithBackup(path, settings) {
   let backupPath = null;
   if (existsSync(path)) {
-    backupPath = `${path}.product-stats-backup`;
+    backupPath = `${path}.ship-tally-backup`;
     copyFileSync(path, backupPath);
   }
   mkdirSync(dirname(path), { recursive: true });
@@ -21,7 +21,7 @@ function writeWithBackup(path, settings) {
   return backupPath;
 }
 
-const OUR_COMMAND = /\.product-stats[\\/]app[\\/]bin[\\/]product-stats\.js"?\s+sync/;
+const OUR_COMMAND = /\.ship-tally[\\/]app[\\/]bin[\\/]ship-tally\.js"?\s+sync/;
 
 function withoutOurs(groups) {
   return groups
@@ -53,7 +53,7 @@ export function removeHook(settingsPath) {
 }
 
 export function hookCommand(stateDir, nodePath) {
-  return `"${nodePath}" "${join(stateDir, 'app', 'bin', 'product-stats.js')}" sync --quiet`;
+  return `"${nodePath}" "${join(stateDir, 'app', 'bin', 'ship-tally.js')}" sync --quiet`;
 }
 
 export function copyApp(appDir, stateDir) {

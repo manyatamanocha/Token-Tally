@@ -1,4 +1,4 @@
-# Product Stats
+# Ship-Tally
 
 A live dashboard for people who build with Claude Code. It shows what each product took to make, and where the tokens went.
 
@@ -9,7 +9,7 @@ Everything runs on your own computer. The tool has no accounts, and it sends not
 You need Node.js 20 or later.
 
 ```
-npx github:OWNER/product-stats
+npx github:manyatamanocha/Ship-Tally
 ```
 
 The first run asks if the tool can connect to Claude Code. A yes adds one `SessionEnd` hook to your Claude Code settings and makes a backup of that file. Numbers then save when the dashboard is closed. A no is also fine: the dashboard works, but it can miss logs that Claude Code deletes while the dashboard is closed.
@@ -44,12 +44,12 @@ You can rename a product, join two products, hide a product, and assign a sessio
 
 ## What it stores
 
-The tool stores numbers, dates, model names, request IDs, session IDs and product folder paths in `~/.product-stats/record.json`. It never stores chat text.
+The tool stores numbers, dates, model names, request IDs, session IDs and product folder paths in `~/.ship-tally/record.json`. It never stores chat text.
 
 ## Remove it
 
 ```
-npx github:OWNER/product-stats uninstall
+npx github:manyatamanocha/Ship-Tally uninstall
 ```
 
-This removes the hook. Delete `~/.product-stats` to remove your numbers too.
+This removes the hook. Delete `~/.ship-tally` to remove your numbers too.

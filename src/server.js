@@ -82,7 +82,7 @@ function isOurServer(port) {
     const req = http.get({ host: HOST, port, path: '/api/ping', timeout: 1000 }, (res) => {
       let text = '';
       res.on('data', (c) => { text += c; });
-      res.on('end', () => resolve(text.includes('"product-stats"')));
+      res.on('end', () => resolve(text.includes('"ship-tally"')));
     });
     req.on('error', () => resolve(false));
     req.on('timeout', () => { req.destroy(); resolve(false); });
@@ -105,7 +105,7 @@ export async function startServer({ recordPath, projectsDir, home, port = 4477, 
     if (!allowedHost(req.headers.host) || !allowedOrigin(req.headers.origin)) return send(res, 403, { error: 'forbidden' });
     const path = req.url.split('?')[0];
     if (req.method === 'GET' && path === '/') return send(res, 200, readFileSync(PAGE_PATH, 'utf8'), 'text/html; charset=utf-8');
-    if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'product-stats' });
+    if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'ship-tally' });
     if (req.method === 'GET' && path === '/api/data') return send(res, 200, { ...buildDashboard(record, Date.now()), syncing, notice });
     if (req.method === 'POST' && path === '/api/override') {
       if (!req.headers['content-type']?.startsWith('application/json')) return send(res, 415, { error: 'send JSON' });

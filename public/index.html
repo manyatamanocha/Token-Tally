@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Product Stats</title>
+<title>Ship-Tally</title>
 <style>
 /* Layout: a live strip on top, a product list on the left, one product's meters on the right. */
 :root {
@@ -232,7 +232,7 @@ function changesRow() {
     data.assigned.map((a) => h('button', { onclick: () => send({ action: 'unassign', sessionId: a.sessionId }) }, `Undo: ${shortDate(a.date)} session to ${a.into}`)));
 }
 function draw() {
-  const top = h('header', null, h('h1', null, 'Product Stats'), statusLine());
+  const top = h('header', null, h('h1', null, 'Ship-Tally'), statusLine());
   if (!data) { appEl.replaceChildren(top); return; }
   const notice = data.notice ? h('section', { class: 'panel', role: 'status' }, data.notice) : null;
   const items = allItems();

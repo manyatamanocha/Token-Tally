@@ -14,7 +14,7 @@ const home = homedir();
 const claudeDir = process.env.CLAUDE_CONFIG_DIR || join(home, '.claude');
 const projectsDir = join(claudeDir, 'projects');
 const settingsPath = join(claudeDir, 'settings.json');
-const stateDir = join(home, '.product-stats');
+const stateDir = join(home, '.ship-tally');
 const recordPath = join(stateDir, 'record.json');
 const appDir = fileURLToPath(new URL('..', import.meta.url));
 

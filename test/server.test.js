@@ -110,7 +110,7 @@ test('a busy port moves to the next port', async () => {
   second.close();
   blocker.close();
 });
-test('a running product-stats server is reused', async () => {
+test('a running ship-tally server is reused', async () => {
   const second = await startServer(opts);
   assert.equal(second.alreadyRunning, true);
   assert.equal(second.url, app.url);
