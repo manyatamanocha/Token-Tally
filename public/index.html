@@ -528,7 +528,7 @@ function render() {
   const right = rightBoxes(s);
   const steps = s.path.actions ?? 0;
   const messages = s.path.messages ?? 0;
-  const html = `<div class="col"><h3>What goes in</h3>${leftBoxes(s)}</div><div></div><div class="col"><h3>${pick ? 'What comes out' : 'Products made so far'}</h3>${right}</div><div class="mid"><b>${esc(pick ? s.name : 'All products')}</b><em>${plural(steps, 'action')}</em><span>${messages ? `Agents took ${(steps / messages).toFixed(1)} steps for each message you sent` : 'Steps taken by agents'}</span></div>`;
+  const html = `<div class="col">${leftBoxes(s)}</div><div></div><div class="col">${right}</div><div class="mid"><b>${esc(pick ? s.name : 'All products')}</b><em>${plural(steps, 'action')}</em><span>${messages ? `Agents took ${(steps / messages).toFixed(1)} steps for each message you sent` : 'Steps taken by agents'}</span></div>`;
   if (setHTML($('mapin'), html)) layout();
   detailPanel(s);
   panels(s);
