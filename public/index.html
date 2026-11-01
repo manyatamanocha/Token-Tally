@@ -29,7 +29,7 @@ td{padding:9px 0 9px 14px;border-top:1px solid var(--line);text-align:right;font
 th.l,td.l{text-align:left}
 th:first-child,td:first-child{padding-left:0}
 td.n{font-family:var(--sans)}
-.ringmap{position:relative;display:grid;grid-template-columns:262px minmax(0,1fr) 262px;height:790px}
+.ringmap{position:relative;display:grid;grid-template-columns:262px minmax(0,1fr) 262px;min-height:790px}
 .lab.go{cursor:pointer;transition:transform .15s,background .15s}
 .lab.go:hover{transform:translateX(-4px);background:var(--hover)}
 .ringmap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -139,7 +139,11 @@ h2{font-weight:500}
 .acts button,.acts select,.acts input,#manage select,#changes button{font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:7px;padding:6px 10px;max-width:100%}
 .acts button:hover,#changes button:hover{background:var(--hover);cursor:pointer}
 #changes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mut);font-size:13px}
-#changes:empty,#notes:empty{display:none}
+#changes:empty,#notes:empty,#back:empty{display:none}
+.pills{justify-content:center}
+#back button{all:unset;cursor:pointer;font-size:14px;color:var(--acc)}
+#back button:hover{text-decoration:underline}
+#back button:focus-visible{outline:2px solid var(--acc)}
 h2,.col h3,.st,.tile,#manage h2{text-align:center}
 .st .lls,.mleg{justify-content:center}
 #detail h2{position:relative;display:block;padding:0 64px}
@@ -160,9 +164,10 @@ main{grid-template-columns:minmax(0,1fr)}
   <section class="card" id="empty" hidden></section>
   <div id="body" hidden>
     <div id="notes"></div>
-    <div class="pills" id="pills"></div>
+    <div id="back"></div>
     <section class="cards" id="cards"></section>
     <section class="card"><div class="ringmap" id="map"><canvas id="ring" aria-hidden="true"></canvas><div id="mapin"></div></div></section>
+    <div class="pills" id="pills"></div>
     <section class="card" id="detail" hidden></section>
     <section class="card" id="manage" hidden></section>
     <section class="two">
@@ -506,6 +511,7 @@ function render() {
   const products = [...data.products].sort((a, b) => b.newTokens - a.newTokens);
   if (data.unsorted) products.push(data.unsorted);
   setHTML($('pills'), [`<button data-id="" class="${pick ? '' : 'on'}">All products</button>`, ...products.map((p) => `<button data-id="${esc(p.id)}" class="${p.id === pick ? 'on' : ''}">${esc(p.name)}</button>`)].join(''));
+  setHTML($('back'), pick ? '<button data-id="">← All products</button>' : '');
   strip(s);
   if (pick) { segs = []; colors = new Map(); }
   const right = rightBoxes(s);
@@ -640,7 +646,8 @@ function pressBox(el) {
   if (p) openProduct(p.dataset.id);
 }
 $('seg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setK(b.dataset.k); openModel = null; render(); } });
-$('pills').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) openProduct(b.dataset.id); });
+$('pills').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { openProduct(b.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } });
+$('back').addEventListener('click', (e) => { if (e.target.closest('button')) openProduct(''); });
 const mapEl = $('map');
 mapEl.addEventListener('click', (e) => pressBox(e.target));
 mapEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.lab[role=button]')) { e.preventDefault(); pressBox(e.target); } });
