@@ -13,6 +13,7 @@ import { startServer } from '../src/server.js';
 const home = homedir();
 const claudeDir = process.env.CLAUDE_CONFIG_DIR || join(home, '.claude');
 const projectsDir = join(claudeDir, 'projects');
+const codexDir = join(process.env.CODEX_HOME || join(home, '.codex'), 'sessions');
 const settingsPath = join(claudeDir, 'settings.json');
 const stateDir = join(home, '.ship-tally');
 const recordPath = join(stateDir, 'record.json');
@@ -20,7 +21,7 @@ const appDir = fileURLToPath(new URL('..', import.meta.url));
 
 async function sync() {
   const record = loadRecord(recordPath);
-  const { changed } = await ingest({ projectsDir, record, home });
+  const { changed } = await ingest({ projectsDir, codexDir, record, home });
   if (changed) saveRecord(recordPath, record);
 }
 
@@ -49,7 +50,7 @@ async function open() {
     console.error(error.message);
     console.error('The dashboard still opens, but numbers save only while it is open.');
   }
-  const app = await startServer({ recordPath, projectsDir, home });
+  const app = await startServer({ recordPath, projectsDir, codexDir, home });
   openBrowser(app.url);
   if (app.alreadyRunning) {
     console.log(`The dashboard is already running at ${app.url}`);

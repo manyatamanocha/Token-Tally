@@ -1,8 +1,51 @@
+import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 export const GAP_MS = 900000;
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob']);
+const WEB_TOOLS = new Set(['WebSearch', 'WebFetch']);
+const DELEGATE_TOOLS = new Set(['Agent', 'Task']);
+const SYSTEM_TEXT = /^(<(command|local-command|system-reminder|task-notification|bash-)|\[SYSTEM NOTIFICATION|Another Claude session|Caveat:)/;
+
+export const PATH_FIELDS = ['messages', 'stops', 'actions', 'reads', 'edits', 'commands', 'web', 'other', 'delegated'];
+export const emptyPath = () => Object.fromEntries(PATH_FIELDS.map((f) => [f, 0]));
+export const hashFile = (path) => createHash('sha256').update(path).digest('hex').slice(0, 12);
+
+export function newState(skipRequest = () => false) {
+  return {
+    times: [], cwd: null, requests: new Map(), writtenFiles: new Set(), readFiles: new Set(),
+    skipRequest, lastCopiedAt: 0, path: emptyPath(), messageTimes: [], stopTimes: [], toolIds: new Set(),
+  };
+}
+
+function userText(entry) {
+  const content = entry.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (!Array.isArray(content)) return '';
+  return content.filter((b) => b?.type === 'text').map((b) => b.text ?? '').join(' ').trim();
+}
+
+function readUser(entry, time, state) {
+  if (entry.isMeta || entry.isCompactSummary || entry.isSidechain) return;
+  const text = userText(entry);
+  if (text.startsWith('[Request interrupted')) state.stopTimes.push(time);
+  else if (text && !SYSTEM_TEXT.test(text)) state.messageTimes.push(time);
+}
+
+function countTool(block, state) {
+  if (block.id && state.toolIds.has(block.id)) return;
+  if (block.id) state.toolIds.add(block.id);
+  const name = block.name ?? '';
+  state.path.actions += 1;
+  if (READ_TOOLS.has(name)) state.path.reads += 1;
+  else if (WRITE_TOOLS.has(name)) state.path.edits += 1;
+  else if (name === 'Bash') state.path.commands += 1;
+  else if (WEB_TOOLS.has(name) || name.includes('chrome')) state.path.web += 1;
+  else if (DELEGATE_TOOLS.has(name)) state.path.delegated += 1;
+  else state.path.other += 1;
+}
 
 export function localDate(ms) {
   const d = new Date(ms);
@@ -21,7 +64,7 @@ export function mergeSpans(spans) {
   return merged;
 }
 
-async function readLog(path, state) {
+async function readLog(path, state, isMain) {
   const lines = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
   for await (const line of lines) {
     const relevant = line.includes('"usage"') || line.includes('"tool_use"') || line.includes('"type":"user"');
@@ -38,6 +81,7 @@ async function readLog(path, state) {
     state.times.push(time);
     if (state.cwd === null && entry.cwd) state.cwd = entry.cwd;
     if (entry.type === 'assistant') readAssistant(entry, time, state);
+    else if (isMain) readUser(entry, time, state);
   }
 }
 
@@ -52,6 +96,7 @@ function readAssistant(entry, time, state) {
   const content = Array.isArray(message.content) ? message.content : [];
   for (const block of content) {
     if (block?.type !== 'tool_use') continue;
+    countTool(block, state);
     const file = block.input?.file_path ?? block.input?.notebook_path;
     if (typeof file !== 'string') continue;
     if (WRITE_TOOLS.has(block.name)) state.writtenFiles.add(file);
@@ -95,7 +140,16 @@ export function rollUp(requests) {
   return { byDay, byModel };
 }
 
-function summarize(state, sessionId, resolveRoot, subagents) {
+function fileKeysByRoot(files, resolveRoot) {
+  const keys = {};
+  for (const file of files) {
+    const root = resolveRoot(file) ?? '';
+    (keys[root] ??= []).push(hashFile(file));
+  }
+  return keys;
+}
+
+export function summarize(state, sessionId, resolveRoot, subagents, extra = {}) {
   const requests = {};
   for (const [id, r] of state.requests) requests[id] = [r.time, r.model, r.newTokens, r.rereadTokens];
   // A resumed session copies old messages to the top of its log. Their times are not new work.
@@ -112,14 +166,20 @@ function summarize(state, sessionId, resolveRoot, subagents) {
     written: countRoots(state.writtenFiles, resolveRoot),
     read: countRoots(state.readFiles, resolveRoot),
     cwdRoot: state.cwd ? resolveRoot(state.cwd, { folder: true }) : null,
+    llm: 'claude',
+    path: {
+      ...state.path,
+      messages: state.path.messages + state.messageTimes.filter((t) => t > state.lastCopiedAt).length,
+      stops: state.path.stops + state.stopTimes.filter((t) => t > state.lastCopiedAt).length,
+    },
+    fileKeys: fileKeysByRoot(state.writtenFiles, resolveRoot),
+    ...extra,
   };
 }
 
 export async function parseSession({ sessionId, mainPath, subagentPaths = [], resolveRoot, skipRequest = () => false }) {
-  const state = {
-    times: [], cwd: null, requests: new Map(), writtenFiles: new Set(), readFiles: new Set(),
-    skipRequest, lastCopiedAt: 0,
-  };
-  for (const path of [mainPath, ...subagentPaths].filter(Boolean)) await readLog(path, state);
+  const state = newState(skipRequest);
+  if (mainPath) await readLog(mainPath, state, true);
+  for (const path of subagentPaths) await readLog(path, state, false);
   return summarize(state, sessionId, resolveRoot, subagentPaths.length);
 }

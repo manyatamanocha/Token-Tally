@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { mergeSpans, parseSession, rollUp } from './parse.js';
+import { canReadZst, parseCodexSession } from './codex.js';
+import { mergeSpans, parseSession, rollUp, PATH_FIELDS } from './parse.js';
 import { findRoot } from './roots.js';
 
 function listDir(path) {
@@ -34,6 +35,19 @@ function findSessions(projectsDir) {
   return [...sessions.values()];
 }
 
+function findCodexSessions(dir, sessions = new Map()) {
+  for (const item of listDir(dir)) {
+    const path = join(dir, item.name);
+    if (item.isDirectory()) findCodexSessions(path, sessions);
+    else if (item.isFile() && /\.jsonl(\.zst)?$/.test(item.name)) {
+      const id = item.name.match(/[0-9a-f]{8}-[0-9a-f-]{27}/)?.[0] ?? item.name.replace(/\.jsonl(\.zst)?$/, '');
+      const sessionId = `codex-${id}`;
+      if (!sessions.has(sessionId) || item.name.endsWith('.jsonl')) sessions.set(sessionId, { sessionId, mainPath: path, subagentPaths: [], llm: 'codex' });
+    }
+  }
+  return sessions;
+}
+
 function fileStates(session) {
   const states = {};
   for (const path of [session.mainPath, ...session.subagentPaths].filter(Boolean)) {
@@ -52,6 +66,14 @@ const higher = (a, b) => {
   for (const [key, value] of Object.entries(b)) result[key] = Math.max(result[key] ?? 0, value);
   return result;
 };
+
+function unionKeys(a = {}, b = {}) {
+  const result = {};
+  for (const source of [a, b]) {
+    for (const [root, keys] of Object.entries(source)) result[root] = [...new Set([...(result[root] ?? []), ...keys])];
+  }
+  return result;
+}
 
 // Numbers only grow. A log that Claude Code deleted can never reduce what the record holds.
 function mergeFacts(stored, parsed) {
@@ -72,13 +94,19 @@ function mergeFacts(stored, parsed) {
     written: higher(stored.written, parsed.written),
     read: higher(stored.read, parsed.read),
     cwdRoot: stored.cwdRoot ?? parsed.cwdRoot,
+    path: stored.path ? Object.fromEntries(PATH_FIELDS.map((f) => [f, Math.max(stored.path[f] ?? 0, parsed.path[f] ?? 0)])) : parsed.path,
+    fileKeys: unionKeys(stored.fileKeys, parsed.fileKeys),
   };
 }
 
-export async function ingest({ projectsDir, record, home }) {
-  if (!existsSync(projectsDir)) return { changed: false, sessions: 0 };
+export async function ingest({ projectsDir, codexDir, record, home }) {
   const resolveRoot = (path, options) => findRoot(path, { home, ...options });
-  const found = findSessions(projectsDir)
+  const claude = existsSync(projectsDir) ? findSessions(projectsDir) : [];
+  const codexAll = codexDir && existsSync(codexDir) ? [...findCodexSessions(codexDir).values()] : [];
+  const zstOk = canReadZst();
+  const codex = codexAll.filter((s) => zstOk || !s.mainPath.endsWith('.zst'));
+  const skipped = codexAll.length - codex.length;
+  const found = [...claude, ...codex]
     .map((session) => ({ session, states: fileStates(session) }))
     .sort((a, b) => oldest(a.states) - oldest(b.states));
 
@@ -94,7 +122,9 @@ export async function ingest({ projectsDir, record, home }) {
     const skipRequest = (id) => record.requestOwner[id] && record.requestOwner[id] !== sessionId;
     let parsed;
     try {
-      parsed = await parseSession({ ...session, resolveRoot, skipRequest });
+      parsed = session.llm === 'codex'
+        ? await parseCodexSession({ sessionId, path: session.mainPath, resolveRoot, skipRequest })
+        : await parseSession({ ...session, resolveRoot, skipRequest });
     } catch {
       continue; // One unreadable log must not stop the other sessions.
     }
@@ -104,7 +134,7 @@ export async function ingest({ projectsDir, record, home }) {
     record.sessions[sessionId] = mergeFacts(record.sessions[sessionId], parsed);
     for (const id of Object.keys(parsed.requests)) record.requestOwner[id] = sessionId;
   }
-  return { changed, sessions: Object.keys(record.sessions).length };
+  return { changed, sessions: Object.keys(record.sessions).length, skipped };
 }
 
 function oldest(states) {

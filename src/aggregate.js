@@ -1,10 +1,12 @@
 import { basename } from 'node:path';
-import { localDate } from './parse.js';
+import { emptyPath, localDate, PATH_FIELDS } from './parse.js';
 
 export const UNSORTED = '__unsorted__';
 const UNSORTED_NAME = 'Not sorted yet';
 const CURRENT_WINDOW_MS = 600000;
 const TOP_SESSIONS = 5;
+const UNSORTED_SESSIONS = 20;
+const TAPE_SIZE = 40;
 
 function resolveMerge(root, merges) {
   const visited = new Set([root]);
@@ -51,10 +53,16 @@ function weightedHours(spans) {
 }
 
 function emptyBucket() {
-  return { sessions: [], spans: [], days: new Set(), perDay: {}, perModel: {}, subagents: 0, newTokens: 0, rereadTokens: 0, requests: 0, lastAt: 0 };
+  return { sessions: [], spans: [], days: new Set(), perDay: {}, perModel: {}, subagents: 0, mainAgents: 0, newTokens: 0, rereadTokens: 0, requests: 0, lastAt: 0, path: emptyPath(), pathMissing: 0, files: new Set() };
 }
 
-function addSession(bucket, facts, share) {
+function sessionFiles(facts, id, overrides) {
+  const byRoot = Object.entries(facts.fileKeys ?? {});
+  if (id === null || id === UNSORTED || overrides.assign[facts.sessionId]) return byRoot.flatMap(([, keys]) => keys);
+  return byRoot.filter(([root]) => root && resolveMerge(root, overrides.merges) === id).flatMap(([, keys]) => keys);
+}
+
+function addSession(bucket, facts, share, id, overrides) {
   let newTokens = 0;
   let rereadTokens = 0;
   let requests = 0;
@@ -77,7 +85,11 @@ function addSession(bucket, facts, share) {
     bucket.days.add(localDate(start));
     bucket.days.add(localDate(end));
   }
-  bucket.subagents += facts.subagents;
+  bucket.subagents += facts.subagents + (facts.isSubagent ? 1 : 0);
+  bucket.mainAgents += facts.isSubagent ? 0 : 1;
+  if (facts.path) for (const f of PATH_FIELDS) bucket.path[f] += (facts.path[f] ?? 0) * share;
+  else bucket.pathMissing += 1;
+  for (const key of sessionFiles(facts, id, overrides)) bucket.files.add(key);
   bucket.newTokens += newTokens;
   bucket.rereadTokens += rereadTokens;
   bucket.requests += requests;
@@ -91,30 +103,54 @@ function addSession(bucket, facts, share) {
   });
 }
 
-function toStats(id, name, b) {
+function toStats(id, name, b, limit = TOP_SESSIONS) {
   const round = (usage) => ({ newTokens: Math.round(usage.newTokens), rereadTokens: Math.round(usage.rereadTokens) });
   return {
     id,
     name,
     days: b.days.size,
     hours: weightedHours(b.spans),
-    agents: b.sessions.length,
+    agents: b.mainAgents,
     subagents: b.subagents,
+    path: Object.fromEntries(PATH_FIELDS.map((f) => [f, Math.round(b.path[f])])),
+    pathMissing: b.pathMissing,
+    files: b.files.size,
     requests: Math.round(b.requests),
     ...round(b),
     rereadPerRequest: b.requests ? Math.round(b.rereadTokens / b.requests) : 0,
     perDay: Object.entries(b.perDay).sort(([a], [c]) => a.localeCompare(c)).map(([date, u]) => ({ date, ...round(u) })),
     perModel: Object.entries(b.perModel).map(([model, u]) => ({ model, ...round(u) }))
       .sort((a, c) => c.newTokens + c.rereadTokens - a.newTokens - a.rereadTokens),
-    topSessions: [...b.sessions].sort((a, c) => c.newTokens + c.rereadTokens - a.newTokens - a.rereadTokens).slice(0, TOP_SESSIONS),
+    topSessions: [...b.sessions].sort((a, c) => c.newTokens + c.rereadTokens - a.newTokens - a.rereadTokens).slice(0, limit),
     lastAt: b.lastAt,
   };
 }
 
-export function buildDashboard(record, now) {
+function topProduct(facts, overrides) {
+  const [id] = Object.entries(sessionShares(facts, overrides)).sort((a, b) => b[1] - a[1])[0] ?? [UNSORTED];
+  return id;
+}
+
+function tapeRow(facts, overrides, nameOf) {
+  const productId = topProduct(facts, overrides);
+  const [model] = Object.entries(facts.byModel).sort((a, b) => b[1].newTokens - a[1].newTokens)[0] ?? ['unknown'];
+  const days = Object.values(facts.byDay);
+  return {
+    at: facts.lastAt,
+    llm: facts.llm ?? 'claude',
+    productId,
+    product: nameOf(productId),
+    model,
+    steps: days.reduce((a, d) => a + d.requests, 0),
+    newTokens: days.reduce((a, d) => a + d.newTokens, 0),
+  };
+}
+
+export function buildDashboard(record, now, llm = null) {
   const { overrides } = record;
   const buckets = new Map();
-  const sessions = Object.values(record.sessions);
+  const everything = emptyBucket();
+  const sessions = Object.values(record.sessions).filter((s) => !llm || (s.llm ?? 'claude') === llm);
   let latest = null;
   for (const facts of sessions) {
     if (!latest || facts.lastAt > latest.lastAt) latest = facts;
@@ -122,12 +158,13 @@ export function buildDashboard(record, now) {
     const entries = Object.keys(shares).length ? Object.entries(shares) : [[UNSORTED, 1]];
     for (const [id, share] of entries) {
       if (!buckets.has(id)) buckets.set(id, emptyBucket());
-      addSession(buckets.get(id), facts, share);
+      addSession(buckets.get(id), facts, share, id, overrides);
     }
+    addSession(everything, facts, 1, null, overrides);
   }
 
   const nameOf = (id) => overrides.names[id] ?? (id === UNSORTED ? UNSORTED_NAME : basename(id));
-  const all = [...buckets].map(([id, b]) => toStats(id, nameOf(id), b)).sort((a, b) => b.lastAt - a.lastAt);
+  const all = [...buckets].map(([id, b]) => toStats(id, nameOf(id), b, id === UNSORTED ? UNSORTED_SESSIONS : TOP_SESSIONS)).sort((a, b) => b.lastAt - a.lastAt);
   const isHidden = (p) => overrides.hidden.includes(p.id);
   const unsorted = all.find((p) => p.id === UNSORTED) ?? null;
   const products = all.filter((p) => p.id !== UNSORTED && !isHidden(p));
@@ -152,5 +189,7 @@ export function buildDashboard(record, now) {
       into: nameOf(id),
     })),
     sessionCount: sessions.length,
+    totals: toStats('all', 'All products', everything),
+    tape: sessions.filter((s) => Object.values(s.byDay).some((d) => d.newTokens > 0)).sort((a, b) => b.lastAt - a.lastAt).slice(0, TAPE_SIZE).map((s) => tapeRow(s, overrides, nameOf)),
   };
 }

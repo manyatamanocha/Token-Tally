@@ -1,6 +1,6 @@
-# Ship-Tally
+# Ship Tally
 
-A live dashboard for people who build with Claude Code. It shows what each product took to make, and where the tokens went.
+A live dashboard for people who build with Claude Code and Codex. It shows what each product took to make, and where the tokens went.
 
 Everything runs on your own computer. The tool has no accounts, and it sends nothing to any server.
 
@@ -40,7 +40,7 @@ You can rename a product, join two products, hide a product, and assign a sessio
 - If a session touches more than one product, its tokens and hours split by the number of files changed. This is an estimate of effort.
 - Days, agents and subagents count in full for each product that a session touched. So product totals for these can add up to more than your real total.
 - The tool cannot see files changed through shell commands. Those sessions use the files they read, then the working folder, then "Not sorted yet".
-- Only Claude Code is supported.
+- Claude Code and Codex are supported. Compressed Codex logs need Node 22.15 or newer.
 
 ## What it stores
 

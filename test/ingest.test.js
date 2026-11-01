@@ -94,7 +94,7 @@ test('new record has no sessions', () => {
 });
 test('saves with a temp file and rename', () => {
   saveRecord(recordPath, newRecord());
-  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 1);
+  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 2);
   assert.deepEqual(readdirSync(join(dir, 'state')), ['record.json']);
 });
 test('a corrupt record is kept and reported, and a new one starts', () => {
@@ -119,9 +119,9 @@ test('a read error does not reset the record', () => {
   assert.ok(existsSync(recordPath));
 });
 test('a newer record version stops and keeps the file', () => {
-  saveRecord(recordPath, { ...newRecord(), version: 2 });
+  saveRecord(recordPath, { ...newRecord(), version: 3 });
   assert.throws(() => loadRecord(recordPath), /newer version/);
-  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 2);
+  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 3);
 });
 test('the recovered path is not saved', () => {
   saveRecord(recordPath, { ...newRecord(), recovered: '/x' });
@@ -131,7 +131,7 @@ test('ingest reads a session and removes requestIds', async () => {
   writeLog('s1', [line('r1', 5)]);
   const record = newRecord();
   const result = await ingest({ projectsDir, record, home });
-  assert.deepEqual(result, { changed: true, sessions: 1 });
+  assert.deepEqual(result, { changed: true, sessions: 1, skipped: 0 });
   assert.equal(requests(record.sessions.s1), 1);
   assert.equal(record.sessions.s1.requestIds, undefined);
   assert.equal(record.requestOwner.r1, 's1');
@@ -183,7 +183,7 @@ test('a growing session keeps its own requests', async () => {
   assert.equal(requests(record.sessions.s1), 2);
 });
 test('a missing projects folder gives zero sessions, no error', async () => {
-  assert.deepEqual(await ingest({ projectsDir: join(dir, 'none'), record: newRecord(), home }), { changed: false, sessions: 0 });
+  assert.deepEqual(await ingest({ projectsDir: join(dir, 'none'), record: newRecord(), home }), { changed: false, sessions: 0, skipped: 0 });
 });
 test('person overrides stay after ingest', async () => {
   writeLog('s1', [line('r1', 5)]);

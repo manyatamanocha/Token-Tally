@@ -89,15 +89,17 @@ function isOurServer(port) {
   });
 }
 
-export async function startServer({ recordPath, projectsDir, home, port = 4477, intervalMs = 5000 }) {
+export async function startServer({ recordPath, projectsDir, codexDir, home, port = 4477, intervalMs = 5000 }) {
   const record = loadRecord(recordPath);
   let syncing = true;
+  let skippedLogs = 0;
   const notice = record.recovered
     ? `Your saved numbers could not be read, so the tool started again from the logs that still exist. The old file is at ${record.recovered}`
     : null;
   const refresh = createRefresher(async () => {
-    const { changed } = await ingest({ projectsDir, record, home });
+    const { changed, skipped } = await ingest({ projectsDir, codexDir, record, home });
     if (changed) saveRecord(recordPath, record);
+    skippedLogs = skipped;
     syncing = false;
   });
 
@@ -106,7 +108,11 @@ export async function startServer({ recordPath, projectsDir, home, port = 4477, 
     const path = req.url.split('?')[0];
     if (req.method === 'GET' && path === '/') return send(res, 200, readFileSync(PAGE_PATH, 'utf8'), 'text/html; charset=utf-8');
     if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'ship-tally' });
-    if (req.method === 'GET' && path === '/api/data') return send(res, 200, { ...buildDashboard(record, Date.now()), syncing, notice });
+    if (req.method === 'GET' && path === '/api/data') {
+      const now = Date.now();
+      const views = { claude: buildDashboard(record, now, 'claude'), codex: buildDashboard(record, now, 'codex') };
+      return send(res, 200, { ...buildDashboard(record, now), views, syncing, notice, skippedLogs });
+    }
     if (req.method === 'POST' && path === '/api/override') {
       if (!req.headers['content-type']?.startsWith('application/json')) return send(res, 415, { error: 'send JSON' });
       try {
