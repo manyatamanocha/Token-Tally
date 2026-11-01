@@ -291,7 +291,7 @@ function strip(s) {
   const grand = v.totals.newTokens + v.totals.rereadTokens;
   const first = pick
     ? ['Share of all tokens', `${(total / (grand || 1) * 100).toFixed(1)}%`, 'This product compared with everything you made.', `<span class="ll">Of ${fmt(grand)} tokens</span>`]
-    : ['Products made', num(v.products.length), tips.products, `<span class="ll">${v.unsorted ? 'Plus some work not sorted yet' : 'All work is sorted'}</span>`];
+    : ['Products made so far', num(v.products.length), tips.products, `<span class="ll">${v.unsorted ? 'Plus some work not sorted yet' : 'All work is sorted'}</span>`];
   const items = [
     first,
     ['Total tokens used', fmt(total), `New tokens plus tokens read again. New: ${fmt(s.newTokens)}. Read again: ${fmt(s.rereadTokens)}. One token is about 3/4 of a word.`, line((x) => { const u = statOf(x); return fmt(u.newTokens + u.rereadTokens); })],
@@ -507,7 +507,7 @@ function render() {
   const right = rightBoxes(s);
   const steps = s.path.actions ?? 0;
   const messages = s.path.messages ?? 0;
-  const html = `<div class="col"><h3>What goes in</h3>${leftBoxes(s)}</div><div></div><div class="col"><h3>${pick ? 'What comes out' : 'Products made'}</h3>${right}</div><div class="mid"><b>${esc(pick ? s.name : 'All products')}</b><em>${plural(steps, 'action')}</em><span>${messages ? `Agents took ${(steps / messages).toFixed(1)} steps for each message you sent` : 'Steps taken by agents'}</span></div>`;
+  const html = `<div class="col"><h3>What goes in</h3>${leftBoxes(s)}</div><div></div><div class="col"><h3>${pick ? 'What comes out' : 'Products made so far'}</h3>${right}</div><div class="mid"><b>${esc(pick ? s.name : 'All products')}</b><em>${plural(steps, 'action')}</em><span>${messages ? `Agents took ${(steps / messages).toFixed(1)} steps for each message you sent` : 'Steps taken by agents'}</span></div>`;
   if (setHTML($('mapin'), html)) layout();
   detailPanel(s);
   panels(s);
