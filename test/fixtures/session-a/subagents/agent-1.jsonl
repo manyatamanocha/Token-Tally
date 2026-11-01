@@ -1,0 +1,1 @@
+{"type":"assistant","timestamp":"2026-10-01T20:03:00.000Z","requestId":"req-s1","cwd":"/h/work/app","message":{"model":"model-b","role":"assistant","usage":{"input_tokens":2,"output_tokens":3,"cache_creation_input_tokens":5,"cache_read_input_tokens":10},"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/h/work/app/c.js"}}]}}

@@ -1,0 +1,11 @@
+{
+  "name": "product-stats",
+  "version": "0.1.0",
+  "description": "Live local dashboard of days, hours, agents and tokens for each product made with Claude Code.",
+  "type": "module",
+  "bin": { "product-stats": "bin/product-stats.js" },
+  "files": ["bin", "src", "public"],
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test" },
+  "license": "MIT"
+}
