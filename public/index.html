@@ -16,9 +16,6 @@ h1{margin:0;font-size:22px;letter-spacing:-.02em}
 .seg{display:inline-flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:11px;background:var(--card)}
 .seg button{all:unset;cursor:pointer;padding:6px 18px;border-radius:8px;color:var(--mut);font-size:14px}
 .seg button.on{background:var(--acc);color:var(--ink)}
-.pills{display:flex;flex-wrap:wrap;gap:6px}
-.pills button{all:unset;cursor:pointer;font-size:13px;padding:5px 13px;border:1px solid var(--line);border-radius:999px;color:var(--mut)}
-.pills button.on{color:var(--ink);border-color:var(--ok);background:var(--acc)}
 button:focus-visible,.lab:focus-visible,.st:focus-visible{outline:2px solid var(--acc)!important}
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--card);border:1px solid var(--line);border-radius:14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
@@ -94,7 +91,6 @@ h2 em{display:block;font:400 12px var(--sans);color:var(--mut);margin-top:1px}
 .drow b{font:600 13.5px var(--mono);text-align:right}
 .card{background:var(--card);border-color:var(--line)}
 .top h1{font-size:30px;font-weight:500;letter-spacing:-.035em}
-.pills button.on{color:var(--on);font-weight:600}
 .seg button.on{color:var(--on);font-weight:600}
 .lab{background:var(--lab);border-color:color-mix(in srgb,var(--c) 55%,transparent)}
 .sv,.mid em,.lab .n,.tile .b{font-family:var(--sans);font-weight:500;letter-spacing:-.02em}
@@ -145,13 +141,14 @@ h2{font-weight:500}
 .lab{border-radius:14px;border-width:0;box-shadow:var(--shadow);border-left:3px solid var(--c)}
 .lab.go:hover,.lab[data-act]:hover{background:var(--card);box-shadow:var(--press)}
 .seg,.tb{border:0;box-shadow:var(--shadow)}
-.pills button{border:0;box-shadow:var(--shadow);transition:box-shadow .15s}
-.pills button:hover{box-shadow:var(--press)}
 .tb:hover{background:var(--card);box-shadow:var(--press)}
 .tm2{box-shadow:var(--press);padding:0;border-radius:14px}
 .st{border-left-color:color-mix(in srgb,var(--line) 60%,transparent)}
 main{gap:22px}#body{gap:22px}
-.pills{justify-content:center}
+#detail .orow{box-sizing:border-box;display:flex;justify-content:space-between;gap:12px;width:100%;padding:8px 6px;border:0;border-top:1px solid var(--line);border-radius:0;color:var(--ink);font-size:13.5px}
+.orow:hover{background:var(--hover)}
+.orow:focus-visible{outline:2px solid var(--acc)}
+.orow b{font:600 13.5px var(--mono)}
 #back button{all:unset;cursor:pointer;font-size:14px;color:var(--acc)}
 #back button:hover{text-decoration:underline}
 #back button:focus-visible{outline:2px solid var(--acc)}
@@ -178,7 +175,6 @@ main{grid-template-columns:minmax(0,1fr)}
     <div id="back"></div>
     <section class="cards" id="cards"></section>
     <section class="card"><div class="ringmap" id="map"><canvas id="ring" aria-hidden="true"></canvas><div id="mapin"></div></div></section>
-    <div class="pills" id="pills"></div>
     <section class="card" id="detail" hidden></section>
     <section class="card" id="manage" hidden></section>
     <section class="two">
@@ -296,7 +292,7 @@ function rightBoxes(s) {
     }).filter(Boolean).join(' · ');
     const live = data.current?.id === p.id ? '<span class="now">Working now</span>' : '';
     const canOpen = p.id !== OTHER;
-    return `<div class="lab${canOpen ? ' go' : ''}" data-c="${c}" data-seg="${n}" ${canOpen ? `data-id="${esc(p.id)}" tabindex="0" role="button"` : ''} style="--c:${c}"><div class="t"><span>📦</span>${esc(p.name)}${live}</div><div class="n">${fmt(p.newTokens)} new tokens · ${(p.newTokens / total * 100).toFixed(1)}%</div><p>${split ? `${esc(split)} · ` : ''}${num(p.agents)} main, ${plural(p.subagents, 'subagent')}</p>${p.perDay.length ? spark(series(p, 'newTokens')) : ''}</div>`;
+    return `<div class="lab${canOpen ? ' go' : ''}" data-c="${c}" data-seg="${n}" ${canOpen ? `data-id="${esc(p.id)}"` : 'data-act="others"'} tabindex="0" role="button" style="--c:${c}"><div class="t"><span>📦</span>${esc(p.name)}${live}</div><div class="n">${fmt(p.newTokens)} new tokens · ${(p.newTokens / total * 100).toFixed(1)}%</div><p>${split ? `${esc(split)} · ` : ''}${num(p.agents)} main, ${plural(p.subagents, 'subagent')}</p>${p.perDay.length ? spark(series(p, 'newTokens')) : ''}</div>`;
   }).join('');
 }
 
@@ -324,6 +320,12 @@ function strip(s) {
 function detailPanel(s) {
   const el = $('detail');
   document.querySelectorAll('.lab[data-act]').forEach((l) => l.classList.toggle('sel', l.dataset.act === act));
+  if (act === 'others' && !pick) {
+    const rows = productBoxes().rest.sort((a, b) => b.newTokens - a.newTokens);
+    setHTML(el, `<h2>Smaller products<button data-x>Close</button></h2><p>Click a product to open it.</p>${rows.map((p) => `<button class="orow" data-id="${esc(p.id)}"><span>${esc(p.name)}</span><b>${fmt(p.newTokens)} new tokens</b></button>`).join('')}`);
+    el.hidden = false;
+    return;
+  }
   if (act !== 'you' && act !== 'memory') { el.hidden = true; return; }
   const you = act === 'you';
   const value = (p) => (you ? p.path.messages ?? 0 : p.rereadTokens);
@@ -519,9 +521,6 @@ function render() {
   if (pick && !listOf(data).some((p) => p.id === pick)) pick = null;
   dates = allDates();
   const s = statOf(k);
-  const products = [...data.products].sort((a, b) => b.newTokens - a.newTokens);
-  if (data.unsorted) products.push(data.unsorted);
-  setHTML($('pills'), [`<button data-id="" class="${pick ? '' : 'on'}">All products</button>`, ...products.map((p) => `<button data-id="${esc(p.id)}" class="${p.id === pick ? 'on' : ''}">${esc(p.name)}</button>`)].join(''));
   setHTML($('back'), pick ? '<button data-id="">← All products</button>' : '');
   strip(s);
   if (pick) { segs = []; colors = new Map(); }
@@ -661,14 +660,17 @@ function pressBox(el) {
   if (p) openProduct(p.dataset.id);
 }
 $('seg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setK(b.dataset.k); openModel = null; render(); } });
-$('pills').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { openProduct(b.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } });
 $('back').addEventListener('click', (e) => { if (e.target.closest('button')) openProduct(''); });
 const mapEl = $('map');
 mapEl.addEventListener('click', (e) => pressBox(e.target));
 mapEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.lab[role=button]')) { e.preventDefault(); pressBox(e.target); } });
 mapEl.addEventListener('mouseover', (e) => { const l = e.target.closest('.lab[data-seg]'); hover = l ? +l.dataset.seg : -1; if (still) draw(0); });
 mapEl.addEventListener('mouseleave', () => { hover = -1; if (still) draw(0); });
-$('detail').addEventListener('click', (e) => { if (e.target.closest('[data-x]')) { act = null; render(); } });
+$('detail').addEventListener('click', (e) => {
+  const open = e.target.closest('.orow');
+  if (e.target.closest('[data-x]') || open) act = null;
+  if (open) { openProduct(open.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } else if (!act) render();
+});
 $('tape').addEventListener('click', (e) => { const r = e.target.closest('.tr[data-id]'); if (r && listOf(data).some((p) => p.id === r.dataset.id)) { openProduct(r.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } });
 $('models').addEventListener('click', (e) => { const b = e.target.closest('.tmm'); if (b) { openModel = openModel === b.dataset.m ? null : b.dataset.m; llmGraph(); } });
 const trendEl = $('trend');
