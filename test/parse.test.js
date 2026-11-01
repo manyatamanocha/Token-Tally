@@ -31,7 +31,7 @@ test('adds subagent tokens and counts 1 subagent', () => {
   assert.equal(facts.subagents, 1);
   assert.deepEqual(facts.byModel['model-b'], { newTokens: 10, rereadTokens: 10 });
 });
-test('skips a cut-off line without error', () => assert.ok(!facts.requestIds.includes('req-x')));
+test('skips a cut-off line without error', () => assert.ok(!('req-x' in facts.requests)));
 test('a 20-minute gap makes two spans', () => {
   assert.deepEqual(facts.spans, [
     [Date.parse('2026-10-01T20:00:00Z'), Date.parse('2026-10-01T20:03:00Z')],

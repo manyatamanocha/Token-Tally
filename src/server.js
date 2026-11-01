@@ -27,6 +27,8 @@ function applyOverride(overrides, body) {
   else if (action === 'hide' && isText(id)) overrides.hidden = [...new Set([...overrides.hidden, id])];
   else if (action === 'unhide' && isText(id)) overrides.hidden = overrides.hidden.filter((h) => h !== id);
   else if (action === 'assign' && isText(sessionId, id)) overrides.assign[sessionId] = id;
+  else if (action === 'unmerge' && isText(from)) delete overrides.merges[from];
+  else if (action === 'unassign' && isText(sessionId)) delete overrides.assign[sessionId];
   else return false;
   return true;
 }
@@ -90,6 +92,9 @@ function isOurServer(port) {
 export async function startServer({ recordPath, projectsDir, home, port = 4477, intervalMs = 5000 }) {
   const record = loadRecord(recordPath);
   let syncing = true;
+  const notice = record.recovered
+    ? `Your saved numbers could not be read, so the tool started again from the logs that still exist. The old file is at ${record.recovered}`
+    : null;
   const refresh = createRefresher(async () => {
     const { changed } = await ingest({ projectsDir, record, home });
     if (changed) saveRecord(recordPath, record);
@@ -101,7 +106,7 @@ export async function startServer({ recordPath, projectsDir, home, port = 4477, 
     const path = req.url.split('?')[0];
     if (req.method === 'GET' && path === '/') return send(res, 200, readFileSync(PAGE_PATH, 'utf8'), 'text/html; charset=utf-8');
     if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'product-stats' });
-    if (req.method === 'GET' && path === '/api/data') return send(res, 200, { ...buildDashboard(record, Date.now()), syncing });
+    if (req.method === 'GET' && path === '/api/data') return send(res, 200, { ...buildDashboard(record, Date.now()), syncing, notice });
     if (req.method === 'POST' && path === '/api/override') {
       if (!req.headers['content-type']?.startsWith('application/json')) return send(res, 415, { error: 'send JSON' });
       try {

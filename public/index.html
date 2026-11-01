@@ -121,6 +121,7 @@ const shortDate = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', {
 
 async function send(body) {
   await fetch('/api/override', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  document.activeElement?.blur?.();
   renaming = false;
   lastJson = '';
   await load();
@@ -172,7 +173,7 @@ function actions(p) {
   }
   const others = data.products.filter((o) => o.id !== p.id);
   const join = others.length ? h('select', { id: 'join-select', 'aria-label': 'Join this product with another product', onchange: (e) => {
-    if (e.target.value) send({ action: 'merge', from: e.target.value, to: p.id }).then(() => draw());
+    if (e.target.value) send({ action: 'merge', from: e.target.value, to: p.id });
   } }, h('option', { value: '' }, 'Join with'), others.map((o) => h('option', { value: o.id }, o.name))) : null;
   return h('div', { class: 'actions' },
     h('button', { onclick: () => { renaming = true; draw(); } }, 'Rename'), join,
@@ -224,20 +225,31 @@ function hiddenRow() {
   if (!data.hidden.length) return null;
   return h('div', { class: 'hidden-list' }, 'Hidden:', data.hidden.map((p) => h('button', { onclick: () => send({ action: 'unhide', id: p.id }) }, `Show ${p.name}`)));
 }
+function changesRow() {
+  if (!data.joined.length && !data.assigned.length) return null;
+  return h('div', { class: 'hidden-list' }, 'Changes:',
+    data.joined.map((j) => h('button', { onclick: () => send({ action: 'unmerge', from: j.from }) }, `Undo join: ${j.name} into ${j.into}`)),
+    data.assigned.map((a) => h('button', { onclick: () => send({ action: 'unassign', sessionId: a.sessionId }) }, `Undo: ${shortDate(a.date)} session to ${a.into}`)));
+}
 function draw() {
   const top = h('header', null, h('h1', null, 'Product Stats'), statusLine());
   if (!data) { appEl.replaceChildren(top); return; }
+  const notice = data.notice ? h('section', { class: 'panel', role: 'status' }, data.notice) : null;
   const items = allItems();
   if (!items.length) {
-    appEl.replaceChildren(top, h('section', { class: 'panel empty' }, data.syncing ? 'Reading your Claude Code logs. The first read can take a few minutes.' : 'No Claude Code sessions found yet.'), hiddenRow() ?? '');
+    appEl.replaceChildren(...[top, notice, h('section', { class: 'panel empty' }, data.syncing ? 'Reading your Claude Code logs. The first read can take a few minutes.' : 'No Claude Code sessions found yet.'), hiddenRow(), changesRow()].filter(Boolean));
     return;
   }
   if (!items.some((p) => p.id === selected)) selected = data.current?.id ?? items[0].id;
   const product = items.find((p) => p.id === selected);
-  appEl.replaceChildren(top, nowPanel(), h('div', { class: 'main' }, listPanel(), detail(product)), hiddenRow() ?? '');
+  appEl.replaceChildren(...[top, notice, nowPanel(), h('div', { class: 'main' }, listPanel(), detail(product)), hiddenRow(), changesRow()].filter(Boolean));
 }
+const SELECT_HOLD_MS = 20000;
+let selectFocusedAt = 0;
+document.addEventListener('focusin', (e) => { if (e.target.tagName === 'SELECT') selectFocusedAt = Date.now(); });
 function isEditing() {
-  return renaming || document.activeElement?.tagName === 'SELECT';
+  const inSelect = document.activeElement?.tagName === 'SELECT' && Date.now() - selectFocusedAt < SELECT_HOLD_MS;
+  return renaming || inSelect;
 }
 async function load() {
   try {
@@ -248,7 +260,11 @@ async function load() {
   } catch {
     failed = true;
   }
-  if (isEditing()) return;
+  if (isEditing()) {
+    const status = appEl.querySelector('.status');
+    if (status) status.replaceWith(statusLine());
+    return;
+  }
   const { generatedAt, ...stable } = data ?? {};
   const json = JSON.stringify(stable) + failed;
   if (json !== lastJson) { lastJson = json; draw(); }

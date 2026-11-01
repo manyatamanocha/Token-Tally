@@ -139,6 +139,14 @@ test('current is the product active in the last 10 minutes, else null', () => {
 test('a live session with no product shows Not sorted yet as current', () => {
   assert.equal(dash([session('s')], {}, T0 + H + 60000).current.name, 'Not sorted yet');
 });
+test('joined lists each joined product with its target', () => {
+  const d = dash([session('s', { written: { '/x/a': 1 } })], { merges: { '/x/b': '/x/a' }, names: { '/x/a': 'App' } });
+  assert.deepEqual(d.joined, [{ from: '/x/b', name: 'b', into: 'App' }]);
+});
+test('assigned lists each assigned session', () => {
+  const d = dash([session('s')], { assign: { s: '/x/a' } });
+  assert.deepEqual(d.assigned, [{ sessionId: 's', date: '2026-10-01', into: 'a' }]);
+});
 test('an empty record gives empty products', () => {
   const d = dash([]);
   assert.deepEqual([d.products, d.unsorted, d.current, d.sessionCount], [[], null, null, 0]);

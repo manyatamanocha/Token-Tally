@@ -79,6 +79,22 @@ test('merge, hide, unhide and assign are saved', async () => {
   assert.deepEqual(overrides.hidden, ['d']);
   assert.deepEqual(overrides.assign, { s: 'a' });
 });
+test('unmerge and unassign undo a change', async () => {
+  await post({ action: 'merge', from: 'b', to: 'a' });
+  await post({ action: 'assign', sessionId: 's', id: 'a' });
+  assert.equal((await post({ action: 'unmerge', from: 'b' })).status, 200);
+  assert.equal((await post({ action: 'unassign', sessionId: 's' })).status, 200);
+  const { overrides } = JSON.parse(readFileSync(opts.recordPath, 'utf8'));
+  assert.deepEqual([overrides.merges, overrides.assign], [{}, {}]);
+});
+test('a recovered record is reported in the payload', async () => {
+  const path = join(dir, 'broken.json');
+  writeFileSync(path, '{broken');
+  const other = await startServer({ ...opts, recordPath: path, port: port() });
+  const data = JSON.parse((await call(`${other.url}/api/data`)).text);
+  other.close();
+  assert.match(data.notice, /broken\.json\.bad-/);
+});
 test('an unknown action gets 400', async () => assert.equal((await post({ action: 'drop' })).status, 400));
 test('a missing field gets 400', async () => assert.equal((await post({ action: 'rename', id: '/x' })).status, 400));
 test('invalid JSON gets 400', async () => {

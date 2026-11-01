@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addHook, removeHook, ensureConnected } from '../src/hook.js';
 
-const CMD = 'node "/h/.product-stats/app/bin/product-stats.js" sync --quiet';
+const CMD = '"/new/node" "/h/.product-stats/app/bin/product-stats.js" sync --quiet';
+const OLD = '"/old/node" "/h/.product-stats/app/bin/product-stats.js" sync --quiet';
 const BIN = fileURLToPath(new URL('../bin/product-stats.js', import.meta.url));
 const APP = fileURLToPath(new URL('..', import.meta.url));
 let dir, settings;
@@ -55,8 +56,50 @@ test('remove deletes only this hook', () => {
   const other = { hooks: [{ type: 'command', command: 'other' }] };
   writeFileSync(settings, JSON.stringify({ hooks: { SessionEnd: [other] } }));
   addHook(settings, CMD);
-  assert.equal(removeHook(settings, CMD).changed, true);
+  assert.equal(removeHook(settings).changed, true);
   assert.deepEqual(read().hooks.SessionEnd, [other]);
+});
+test('add replaces a stale Node path', () => {
+  addHook(settings, OLD);
+  assert.equal(addHook(settings, CMD).changed, true);
+  assert.deepEqual(read().hooks.SessionEnd, [{ hooks: [{ type: 'command', command: CMD }] }]);
+});
+test('remove finds a hook with an old Node path', () => {
+  addHook(settings, OLD);
+  assert.equal(removeHook(settings).changed, true);
+  assert.equal(read().hooks.SessionEnd, undefined);
+});
+test('remove keeps another hook in the same group', () => {
+  const other = { type: 'command', command: 'other' };
+  writeFileSync(settings, JSON.stringify({ hooks: { SessionEnd: [{ hooks: [other, { type: 'command', command: CMD }] }] } }));
+  removeHook(settings);
+  assert.deepEqual(read().hooks.SessionEnd, [{ hooks: [other] }]);
+});
+test('a later run repairs a stale Node path', async () => {
+  const stateDir = join(dir, '.product-stats');
+  await ensureConnected({ stateDir, settingsPath: settings, appDir: APP, nodePath: '/old/node', ask: async () => true });
+  await ensureConnected({ stateDir, settingsPath: settings, appDir: APP, nodePath: '/new/node', ask: null });
+  assert.match(read().hooks.SessionEnd[0].hooks[0].command, /^"\/new\/node"/);
+});
+test('uninstall removes the hook and the saved choice', () => {
+  const home = join(dir, 'home3');
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  mkdirSync(join(home, '.product-stats'));
+  writeFileSync(join(home, '.product-stats', 'settings.json'), '{"connected":true}');
+  addHook(join(home, '.claude', 'settings.json'), OLD);
+  const run = spawnSync(process.execPath, [BIN, 'uninstall'], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '' }, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /Disconnected/);
+  assert.equal(existsSync(join(home, '.product-stats', 'settings.json')), false);
+});
+test('uninstall with invalid settings prints a clear message', () => {
+  const home = join(dir, 'home4');
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  writeFileSync(join(home, '.claude', 'settings.json'), '{broken');
+  const run = spawnSync(process.execPath, [BIN, 'uninstall'], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '' }, encoding: 'utf8' });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /not valid JSON/);
+  assert.doesNotMatch(run.stderr, /at .*hook\.js/);
 });
 test('a yes copies the app and connects', async () => {
   const stateDir = join(dir, 'state');

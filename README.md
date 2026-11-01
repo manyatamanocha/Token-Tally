@@ -32,7 +32,7 @@ Use the same command to open the dashboard later. Keep the terminal window open 
 
 The tool looks at the files that each session changed. A file belongs to the nearest folder with a git repository. If there is none, it belongs to the first folder under your home folder that is not a general folder such as Documents or an Obsidian vault.
 
-You can rename a product, join two products, hide a product, and assign a session in "Not sorted yet" to a product.
+You can rename a product, join two products, hide a product, and assign a session in "Not sorted yet" to a product. You can undo a join or an assignment at the bottom of the page.
 
 ## Limits
 
@@ -44,7 +44,7 @@ You can rename a product, join two products, hide a product, and assign a sessio
 
 ## What it stores
 
-The tool stores numbers, dates, model names, session IDs and product folder paths in `~/.product-stats/record.json`. It never stores chat text.
+The tool stores numbers, dates, model names, request IDs, session IDs and product folder paths in `~/.product-stats/record.json`. It never stores chat text.
 
 ## Remove it
 

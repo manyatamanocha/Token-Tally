@@ -21,25 +21,33 @@ function writeWithBackup(path, settings) {
   return backupPath;
 }
 
-const hasCommand = (group, command) => group.hooks?.some((h) => h.command === command);
+const OUR_COMMAND = /\.product-stats[\\/]app[\\/]bin[\\/]product-stats\.js"?\s+sync/;
+
+function withoutOurs(groups) {
+  return groups
+    .map((group) => ({ ...group, hooks: (group.hooks ?? []).filter((h) => !OUR_COMMAND.test(h.command ?? '')) }))
+    .filter((group) => group.hooks.length);
+}
 
 export function addHook(settingsPath, command) {
   const settings = readSettings(settingsPath);
   const groups = settings.hooks?.SessionEnd ?? [];
-  if (groups.some((g) => hasCommand(g, command))) return { changed: false, backupPath: null };
+  if (groups.some((g) => g.hooks?.some((h) => h.command === command))) return { changed: false, backupPath: null };
   settings.hooks = {
     ...settings.hooks,
-    SessionEnd: [...groups, { hooks: [{ type: 'command', command }] }],
+    SessionEnd: [...withoutOurs(groups), { hooks: [{ type: 'command', command }] }],
   };
   return { changed: true, backupPath: writeWithBackup(settingsPath, settings) };
 }
 
-export function removeHook(settingsPath, command) {
+export function removeHook(settingsPath) {
   const settings = readSettings(settingsPath);
   const groups = settings.hooks?.SessionEnd ?? [];
-  if (!groups.some((g) => hasCommand(g, command))) return { changed: false };
-  settings.hooks.SessionEnd = groups.filter((g) => !hasCommand(g, command));
-  if (!settings.hooks.SessionEnd.length) delete settings.hooks.SessionEnd;
+  const remaining = withoutOurs(groups);
+  const count = (list) => list.reduce((n, g) => n + (g.hooks?.length ?? 0), 0);
+  if (count(remaining) === count(groups)) return { changed: false };
+  if (remaining.length) settings.hooks.SessionEnd = remaining;
+  else delete settings.hooks.SessionEnd;
   writeWithBackup(settingsPath, settings);
   return { changed: true };
 }
@@ -58,7 +66,10 @@ export async function ensureConnected({ stateDir, settingsPath, appDir, nodePath
   const choicePath = join(stateDir, 'settings.json');
   const saved = existsSync(choicePath) ? JSON.parse(readFileSync(choicePath, 'utf8')) : null;
   if (saved) {
-    if (saved.connected) copyApp(appDir, stateDir);
+    if (saved.connected) {
+      copyApp(appDir, stateDir);
+      addHook(settingsPath, hookCommand(stateDir, nodePath)); // Repairs an old Node path.
+    }
     return { connected: saved.connected };
   }
   if (!ask) return { connected: false };

@@ -1,9 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
 import { dirname } from 'node:path';
+
+const VERSION = 1;
 
 export function newRecord() {
   return {
-    version: 1,
+    version: VERSION,
     sessions: {},
     requestOwner: {},
     seen: {},
@@ -13,19 +15,30 @@ export function newRecord() {
 
 export function loadRecord(path) {
   if (!existsSync(path)) return newRecord();
+  const text = readFileSync(path, 'utf8'); // A read error stops here and keeps the file.
+  let parsed = null;
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8'));
-    if (parsed?.version !== 1) throw new Error('unknown version');
-    return { ...newRecord(), ...parsed };
+    parsed = JSON.parse(text);
   } catch {
-    renameSync(path, `${path}.bad`);
-    return newRecord();
+    parsed = null;
   }
+  if (parsed?.version > VERSION) throw new Error(`${path} was made by a newer version of this tool. Update the tool.`);
+  if (parsed?.version === VERSION) return { ...newRecord(), ...parsed };
+  const recovered = `${path}.bad-${Date.now()}`;
+  renameSync(path, recovered);
+  return { ...newRecord(), recovered };
 }
 
 export function saveRecord(path, record) {
   mkdirSync(dirname(path), { recursive: true });
+  const { recovered, ...stored } = record;
   const temp = `${path}.${process.pid}.tmp`;
-  writeFileSync(temp, JSON.stringify(record));
+  const file = openSync(temp, 'w');
+  try {
+    writeSync(file, JSON.stringify(stored));
+    fsyncSync(file);
+  } finally {
+    closeSync(file);
+  }
   renameSync(temp, path);
 }

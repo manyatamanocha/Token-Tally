@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
-import { ensureConnected, hookCommand, removeHook } from '../src/hook.js';
+import { ensureConnected, removeHook } from '../src/hook.js';
 import { ingest } from '../src/ingest.js';
 import { loadRecord, saveRecord } from '../src/record.js';
 import { startServer } from '../src/server.js';
@@ -59,7 +60,8 @@ async function open() {
 }
 
 function uninstall() {
-  const { changed } = removeHook(settingsPath, hookCommand(stateDir, process.execPath));
+  const { changed } = removeHook(settingsPath);
+  rmSync(join(stateDir, 'settings.json'), { force: true });
   console.log(changed ? 'Disconnected from Claude Code.' : 'The tool was not connected to Claude Code.');
   console.log(`Your numbers are still in ${stateDir}. Delete that folder to remove them.`);
 }
@@ -73,7 +75,12 @@ if (command === 'sync') {
   }
   process.exit(0);
 } else if (command === 'uninstall') {
-  uninstall();
+  try {
+    uninstall();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 } else if (!command) {
   try {
     await open();

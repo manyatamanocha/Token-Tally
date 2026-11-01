@@ -10,15 +10,15 @@ export function localDate(ms) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function toSpans(times) {
-  const sorted = [...times].sort((a, b) => a - b);
-  const spans = [];
-  for (const t of sorted) {
-    const last = spans[spans.length - 1];
-    if (last && t - last[1] <= GAP_MS) last[1] = t;
-    else spans.push([t, t]);
+export function mergeSpans(spans) {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [start, end] of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && start - last[1] <= GAP_MS) last[1] = Math.max(last[1], end);
+    else merged.push([start, end]);
   }
-  return spans;
+  return merged;
 }
 
 async function readLog(path, state) {
@@ -44,6 +44,11 @@ async function readLog(path, state) {
 function readAssistant(entry, time, state) {
   const message = entry.message;
   if (!message || typeof message !== 'object') return;
+  const id = entry.requestId ?? entry.uuid;
+  if (id && state.skipRequest(id)) {
+    state.lastCopiedAt = Math.max(state.lastCopiedAt, time);
+    return;
+  }
   const content = Array.isArray(message.content) ? message.content : [];
   for (const block of content) {
     if (block?.type !== 'tool_use') continue;
@@ -53,9 +58,7 @@ function readAssistant(entry, time, state) {
     else if (block.name === 'Read') state.readFiles.add(file);
   }
   const usage = message.usage;
-  if (!usage || message.model === '<synthetic>') return;
-  const id = entry.requestId ?? entry.uuid;
-  if (!id) return;
+  if (!usage || message.model === '<synthetic>' || !id) return;
   const known = state.requests.get(id);
   if (!known || (usage.output_tokens ?? 0) >= known.output) {
     state.requests.set(id, {
@@ -68,50 +71,55 @@ function readAssistant(entry, time, state) {
   }
 }
 
-function countRoots(files, cwd, resolveRoot) {
+function countRoots(files, resolveRoot) {
   const counts = {};
   for (const file of files) {
-    const root = resolveRoot(file, cwd);
+    const root = resolveRoot(file);
     if (root) counts[root] = (counts[root] ?? 0) + 1;
   }
   return counts;
 }
 
-export function summarize(state, sessionId, resolveRoot, subagents, skipRequest = () => false) {
+export function rollUp(requests) {
   const byDay = {};
   const byModel = {};
-  const requestIds = [];
-  for (const [id, r] of state.requests) {
-    if (skipRequest(id)) continue;
-    requestIds.push(id);
-    const day = (byDay[localDate(r.time)] ??= { newTokens: 0, rereadTokens: 0, requests: 0 });
-    day.newTokens += r.newTokens;
-    day.rereadTokens += r.rereadTokens;
+  for (const [time, modelName, newTokens, rereadTokens] of Object.values(requests)) {
+    const day = (byDay[localDate(time)] ??= { newTokens: 0, rereadTokens: 0, requests: 0 });
+    day.newTokens += newTokens;
+    day.rereadTokens += rereadTokens;
     day.requests += 1;
-    const model = (byModel[r.model] ??= { newTokens: 0, rereadTokens: 0 });
-    model.newTokens += r.newTokens;
-    model.rereadTokens += r.rereadTokens;
+    const model = (byModel[modelName] ??= { newTokens: 0, rereadTokens: 0 });
+    model.newTokens += newTokens;
+    model.rereadTokens += rereadTokens;
   }
-  const spans = toSpans(state.times);
+  return { byDay, byModel };
+}
+
+function summarize(state, sessionId, resolveRoot, subagents) {
+  const requests = {};
+  for (const [id, r] of state.requests) requests[id] = [r.time, r.model, r.newTokens, r.rereadTokens];
+  // A resumed session copies old messages to the top of its log. Their times are not new work.
+  const times = [...state.times.filter((t) => t > state.lastCopiedAt), ...[...state.requests.values()].map((r) => r.time)];
+  const spans = mergeSpans(times.map((t) => [t, t]));
   return {
     sessionId,
     startedAt: spans[0]?.[0] ?? 0,
     lastAt: spans[spans.length - 1]?.[1] ?? 0,
     spans,
-    byDay,
-    byModel,
+    ...rollUp(requests),
+    requests,
     subagents,
-    written: countRoots(state.writtenFiles, state.cwd, resolveRoot),
-    read: countRoots(state.readFiles, state.cwd, resolveRoot),
-    cwdRoot: state.cwd ? resolveRoot(state.cwd, state.cwd) : null,
-    requestIds,
+    written: countRoots(state.writtenFiles, resolveRoot),
+    read: countRoots(state.readFiles, resolveRoot),
+    cwdRoot: state.cwd ? resolveRoot(state.cwd, { folder: true }) : null,
   };
 }
 
-export async function parseSession({ sessionId, mainPath, subagentPaths = [], resolveRoot, skipRequest }) {
+export async function parseSession({ sessionId, mainPath, subagentPaths = [], resolveRoot, skipRequest = () => false }) {
   const state = {
     times: [], cwd: null, requests: new Map(), writtenFiles: new Set(), readFiles: new Set(),
+    skipRequest, lastCopiedAt: 0,
   };
   for (const path of [mainPath, ...subagentPaths].filter(Boolean)) await readLog(path, state);
-  return summarize(state, sessionId, resolveRoot, subagentPaths.length, skipRequest);
+  return summarize(state, sessionId, resolveRoot, subagentPaths.length);
 }

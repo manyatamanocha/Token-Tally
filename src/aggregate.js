@@ -145,6 +145,12 @@ export function buildDashboard(record, now) {
     products,
     unsorted,
     hidden: all.filter(isHidden).map(({ id, name }) => ({ id, name })),
+    joined: Object.entries(overrides.merges).map(([from, to]) => ({ from, name: nameOf(from), into: nameOf(to) })),
+    assigned: Object.entries(overrides.assign).map(([sessionId, id]) => ({
+      sessionId,
+      date: localDate(record.sessions[sessionId]?.startedAt ?? 0),
+      into: nameOf(id),
+    })),
     sessionCount: sessions.length,
   };
 }

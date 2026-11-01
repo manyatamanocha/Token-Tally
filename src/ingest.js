@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseSession } from './parse.js';
+import { mergeSpans, parseSession, rollUp } from './parse.js';
 import { findRoot } from './roots.js';
 
 function listDir(path) {
@@ -47,11 +47,37 @@ function fileStates(session) {
   return states;
 }
 
-const totalRequests = (facts) => Object.values(facts.byDay).reduce((n, d) => n + d.requests, 0);
+const higher = (a, b) => {
+  const result = { ...a };
+  for (const [key, value] of Object.entries(b)) result[key] = Math.max(result[key] ?? 0, value);
+  return result;
+};
+
+// Numbers only grow. A log that Claude Code deleted can never reduce what the record holds.
+function mergeFacts(stored, parsed) {
+  if (!stored) return parsed;
+  const requests = { ...stored.requests };
+  for (const [id, value] of Object.entries(parsed.requests)) {
+    if (!requests[id] || value[2] >= requests[id][2]) requests[id] = value;
+  }
+  const spans = mergeSpans([...stored.spans, ...parsed.spans]);
+  return {
+    ...parsed,
+    startedAt: spans[0]?.[0] ?? 0,
+    lastAt: spans[spans.length - 1]?.[1] ?? 0,
+    spans,
+    ...rollUp(requests),
+    requests,
+    subagents: Math.max(stored.subagents, parsed.subagents),
+    written: higher(stored.written, parsed.written),
+    read: higher(stored.read, parsed.read),
+    cwdRoot: stored.cwdRoot ?? parsed.cwdRoot,
+  };
+}
 
 export async function ingest({ projectsDir, record, home }) {
   if (!existsSync(projectsDir)) return { changed: false, sessions: 0 };
-  const resolveRoot = (file) => findRoot(file, { home });
+  const resolveRoot = (path, options) => findRoot(path, { home, ...options });
   const found = findSessions(projectsDir)
     .map((session) => ({ session, states: fileStates(session) }))
     .sort((a, b) => oldest(a.states) - oldest(b.states));
@@ -63,15 +89,20 @@ export async function ingest({ projectsDir, record, home }) {
       return !seen || seen.mtimeMs !== s.mtimeMs || seen.size !== s.size;
     });
     if (!isChanged) continue;
-    changed = true;
-    Object.assign(record.seen, states);
 
-    const skipRequest = (id) => record.requestOwner[id] && record.requestOwner[id] !== session.sessionId;
-    const { requestIds, ...facts } = await parseSession({ ...session, resolveRoot, skipRequest });
-    const stored = record.sessions[session.sessionId];
-    if (stored && totalRequests(facts) < totalRequests(stored)) continue;
-    record.sessions[session.sessionId] = facts;
-    for (const id of requestIds) record.requestOwner[id] = session.sessionId;
+    const { sessionId } = session;
+    const skipRequest = (id) => record.requestOwner[id] && record.requestOwner[id] !== sessionId;
+    let parsed;
+    try {
+      parsed = await parseSession({ ...session, resolveRoot, skipRequest });
+    } catch {
+      continue; // One unreadable log must not stop the other sessions.
+    }
+    Object.assign(record.seen, states);
+    changed = true;
+    if (!parsed.spans.length) continue;
+    record.sessions[sessionId] = mergeFacts(record.sessions[sessionId], parsed);
+    for (const id of Object.keys(parsed.requests)) record.requestOwner[id] = sessionId;
   }
   return { changed, sessions: Object.keys(record.sessions).length };
 }
