@@ -140,6 +140,17 @@ h2{font-weight:500}
 .acts button:hover,#changes button:hover{background:var(--hover);cursor:pointer}
 #changes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mut);font-size:13px}
 #changes:empty,#notes:empty,#back:empty{display:none}
+.card,.cards,.tile{border:0;border-radius:20px;box-shadow:var(--shadow);background:var(--card)}
+.tile{background:var(--card)}
+.lab{border-radius:14px;border-width:0;box-shadow:var(--shadow);border-left:3px solid var(--c)}
+.lab.go:hover,.lab[data-act]:hover{background:var(--card);box-shadow:var(--press)}
+.seg,.tb{border:0;box-shadow:var(--shadow)}
+.pills button{border:0;box-shadow:var(--shadow);transition:box-shadow .15s}
+.pills button:hover{box-shadow:var(--press)}
+.tb:hover{background:var(--card);box-shadow:var(--press)}
+.tm2{box-shadow:var(--press);padding:0;border-radius:14px}
+.st{border-left-color:color-mix(in srgb,var(--line) 60%,transparent)}
+main{gap:22px}#body{gap:22px}
 .pills{justify-content:center}
 #back button{all:unset;cursor:pointer;font-size:14px;color:var(--acc)}
 #back button:hover{text-decoration:underline}
@@ -185,7 +196,7 @@ main{grid-template-columns:minmax(0,1fr)}
 const REFRESH_MS = 5000;
 const UNSORTED = '__unsorted__';
 const OTHER = '__other__';
-const THEMES = {"sky":{"bg":"#f2f6fb","card":"#ffffff","lab":"#fffffff0","line":"#d9e2ee","ink":"#14202e","mut":"#66768a","soft":"#44556a","acc":"#2563eb","on":"#ffffff","hover":"#e8eff8","hi":"#1d4ed8","glow":"#2563eb14","mid":"#f2f6fb","claude":"#2563eb","codex":"#0f9d8a","pal":["#2563eb","#0f9d8a","#7a5bd0","#e8741a","#d23f73","#4f8a3a","#66768a"],"d":["#2563eb","#5b8def","#1d4ed8"],"dn":"#b4c2d4","g":["#2563eb1c","#2563eb0c","#2563eb00"],"wire":"#000000","op":"source-over","you":"#1d4ed8","mem":"#7a5bd0","out":"#1d4ed8","file":"#1d4ed8"},"violet":{"bg":"#0a0614","card":"#130c22","lab":"#130c22e6","line":"#2b2140","ink":"#f1ecfa","mut":"#9a90b0","soft":"#c6bcd9","acc":"#9b6bff","on":"#0a0614","hover":"#1e1533","hi":"#c9aeff","glow":"#6b3bff24","mid":"#0d0819","claude":"#b68bff","codex":"#5ee0d6","pal":["#9b6bff","#5ee0d6","#ff7ac6","#ffc46b","#6fb7ff","#b7d968","#b9b2c8"],"d":["#e3d4ff","#b68bff","#7a4dff"],"dn":"#4a3d6b","g":["#7a4dff30","#7a4dff14","#7a4dff00"],"wire":"#ffffff","op":"lighter","you":"#e3d4ff","mem":"#ff7ac6","out":"#b68bff","file":"#c9aeff"}};
+const THEMES = {"sky":{"shadow":"9px 9px 20px #d3deeb,-9px -9px 20px #ffffff","press":"inset 4px 4px 9px #d3deeb,inset -4px -4px 9px #ffffff","bg":"#eef3f9","card":"#eef3f9","lab":"#eef3f9f2","line":"#d9e2ee","ink":"#14202e","mut":"#66768a","soft":"#44556a","acc":"#2563eb","on":"#ffffff","hover":"#e8eff8","hi":"#1d4ed8","glow":"#2563eb14","mid":"#eef3f9","claude":"#2563eb","codex":"#0f9d8a","pal":["#2563eb","#0f9d8a","#7a5bd0","#e8741a","#d23f73","#4f8a3a","#66768a"],"d":["#2563eb","#5b8def","#1d4ed8"],"dn":"#b4c2d4","g":["#2563eb1c","#2563eb0c","#2563eb00"],"wire":"#000000","op":"source-over","you":"#1d4ed8","mem":"#7a5bd0","out":"#1d4ed8","file":"#1d4ed8"},"violet":{"shadow":"8px 8px 20px #05030b,-6px -6px 16px #1c1433","press":"inset 4px 4px 9px #0a0614,inset -3px -3px 8px #1f1738","bg":"#130c22","card":"#130c22","lab":"#130c22e6","line":"#2b2140","ink":"#f1ecfa","mut":"#9a90b0","soft":"#c6bcd9","acc":"#9b6bff","on":"#0a0614","hover":"#1e1533","hi":"#c9aeff","glow":"#6b3bff24","mid":"#0d0819","claude":"#b68bff","codex":"#5ee0d6","pal":["#9b6bff","#5ee0d6","#ff7ac6","#ffc46b","#6fb7ff","#b7d968","#b9b2c8"],"d":["#e3d4ff","#b68bff","#7a4dff"],"dn":"#4a3d6b","g":["#7a4dff30","#7a4dff14","#7a4dff00"],"wire":"#ffffff","op":"lighter","you":"#e3d4ff","mem":"#ff7ac6","out":"#b68bff","file":"#c9aeff"}};
 let TH = THEMES.sky;
 const COL = {};
 const NAME = { claude: 'Claude', codex: 'Codex' };
@@ -619,6 +630,10 @@ function drawTrend(now) {
   g.textAlign = 'left'; g.fillText(shortDate(dates[0]), pad[3], h - 5); g.textAlign = 'right'; g.fillText(shortDate(dates[n - 1]), w - pad[1], h - 5);
   const i = trendHover >= 0 ? trendHover : (still ? n - 1 : Math.floor(now / 900) % n);
   for (const s of trendS) {
+    const fill = g.createLinearGradient(0, pad[0], 0, h - pad[2]);
+    fill.addColorStop(0, `${COL[s.x]}40`); fill.addColorStop(1, `${COL[s.x]}00`);
+    g.beginPath(); s.v.forEach((v, j) => { if (j) g.lineTo(X(j), Y(v)); else g.moveTo(X(j), Y(v)); });
+    g.lineTo(X(n - 1), h - pad[2]); g.lineTo(X(0), h - pad[2]); g.closePath(); g.fillStyle = fill; g.fill();
     g.beginPath(); s.v.forEach((v, j) => { if (j) g.lineTo(X(j), Y(v)); else g.moveTo(X(j), Y(v)); });
     g.strokeStyle = COL[s.x]; g.lineWidth = 1.8; g.stroke();
     g.beginPath(); g.arc(X(i), Y(s.v[i]), 4, 0, 6.3); g.fillStyle = COL[s.x]; g.shadowColor = COL[s.x]; g.shadowBlur = 10; g.fill(); g.shadowBlur = 0;
@@ -679,7 +694,7 @@ function setTheme(name) {
   const n = THEMES[name] ? name : 'sky';
   TH = THEMES[n];
   const r = document.documentElement.style;
-  for (const v of ['bg', 'card', 'lab', 'line', 'ink', 'mut', 'soft', 'acc', 'on', 'hover', 'hi', 'glow', 'mid', 'codex', 'claude']) r.setProperty(`--${v}`, TH[v]);
+  for (const v of ['bg', 'card', 'lab', 'line', 'ink', 'mut', 'soft', 'acc', 'on', 'hover', 'hi', 'glow', 'mid', 'codex', 'claude', 'shadow', 'press']) r.setProperty(`--${v}`, TH[v]);
   r.setProperty('--ok', TH.acc);
   COL.claude = TH.claude; COL.codex = TH.codex;
   themeBtn.textContent = n === 'sky' ? '☀️' : '🌙';
