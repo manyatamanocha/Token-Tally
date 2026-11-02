@@ -122,6 +122,9 @@ h2{font-weight:700}
 .dnr i{width:12px;height:12px;border-radius:4px}
 .dnr span{font:13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dnr b{font:600 13.5px var(--mono);text-align:right}.dnr em{font:13px var(--mono);font-style:normal;color:var(--mut);text-align:right}
+.dnmore{display:grid;grid-template-columns:minmax(0,1fr) 74px 54px;gap:3px 10px;margin:2px 6px 6px 28px;font:12.5px var(--mono);color:var(--soft)}
+.dnmore b{text-align:right;color:var(--ink)}.dnmore em{font-style:normal;text-align:right;color:var(--mut)}
+.dnr+.dnmore+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
 .dnr+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
 @media(max-width:760px){.dn{grid-template-columns:minmax(0,1fr)}}
 .vparts{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px}
@@ -410,6 +413,13 @@ function llmGraph() {
   if (!bars.length) { setHTML(box, '<p class="sub">No model data yet.</p>'); return; }
   const total = bars.reduce((a, b) => a + b.value, 0) || 1;
   const groups = keys().map((x) => ({ x, rows: bars.filter((b) => b.x === x) })).filter((g) => g.rows.length);
+  for (const g of groups) {
+    const rest = g.rows.slice(3);
+    if (rest.length < 2) continue;
+    const merged = new Map();
+    for (const r of rest) for (const p of r.parts) { const m = merged.get(p.name) ?? { ...p, value: 0 }; m.value += p.value; merged.set(p.name, m); }
+    g.rows = [...g.rows.slice(0, 3), { key: `${g.x}:__other`, x: g.x, model: `Other ${NAME[g.x]} models`, value: rest.reduce((a, r) => a + r.value, 0), parts: [...merged.values()].sort((a, b) => b.value - a.value), rest }];
+  }
   for (const g of groups) g.rows.forEach((b, i) => { b.shade = `color-mix(in srgb, ${COL[g.x]} ${Math.max(38, 100 - i * 15)}%, var(--card))`; });
   const R = 78, C = 2 * Math.PI * R;
   let at = 0;
@@ -425,13 +435,14 @@ function llmGraph() {
     const sum = g.rows.reduce((a, b) => a + b.value, 0);
     const rows = g.rows.map((b) => {
       const open = openModel === b.key;
-      const det = open ? `<div class="vparts">${pick ? '<span>This model worked on this product only.</span>' : b.parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>` : '';
+      const more = open && b.rest ? `<div class="dnmore">${b.rest.map((r) => `<span>${esc(r.model)}</span><b>${fmt(r.value)}</b><em>${(r.value / total * 100).toFixed(1)}%</em>`).join('')}</div>` : '';
+      const det = open ? `${more}<div class="vparts">${pick ? '<span>This model worked on this product only.</span>' : b.parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>` : '';
       return `<button class="dnr${open ? ' sel' : ''}" data-m="${esc(b.key)}" aria-expanded="${open}"><i style="background:${b.shade}"></i><span title="${esc(b.model)}">${esc(b.model)}</span><b>${fmt(b.value)}</b><em>${(b.value / total * 100).toFixed(1)}%</em></button>${det}`;
     }).join('');
     return `<div class="dng" style="--c:${COL[g.x]}"><strong>${NAME[g.x]}</strong><b>${fmt(sum)}</b><span>new tokens, ${(sum / total * 100).toFixed(1)}% ${scope}</span></div>${rows}`;
   }).join('');
   setHTML(box, `<div class="dn"><div class="dnsvg"><svg viewBox="0 0 200 200" role="img" aria-label="New tokens by model">${rings}</svg><div class="dnmid"><b>${fmt(total)}</b><span>new tokens</span></div></div><div class="dnl">${list}</div></div>`);
-  setHTML($('llmfor'), '· each slice is one model. Click a model to see which products it worked on.');
+  setHTML($('llmfor'), '· each slice is one model. The smaller models are grouped as Other. Click any row to see more.');
 }
 
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
