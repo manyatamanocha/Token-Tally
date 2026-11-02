@@ -136,6 +136,8 @@ h2{font-weight:700}
 .acts button:hover,#changes button:hover{background:var(--hover);cursor:pointer}
 #changes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mut);font-size:13px}
 #changes:empty,#notes:empty,#back:empty{display:none}
+#mapin>.col:first-child{justify-content:center;gap:30px}
+#mapin>.col:first-child .lab{min-height:92px;display:grid;align-content:center}
 #save[hidden]{display:none}
 .dl{border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
 .dl-bar{all:unset;box-sizing:border-box;display:flex;gap:12px;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:16px;cursor:pointer}
@@ -230,7 +232,7 @@ main{max-width:1680px}
 #body{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-auto-flow:dense;align-items:start}
 #notes,#back,#cards,#save,#detail,#manage,#changes,#advicePage{grid-column:1/-1}
 .ringcard{grid-column:1;grid-row:span 3;align-self:stretch}
-.ringcard .ringmap{grid-template-columns:232px minmax(0,1fr) 232px;height:100%}
+.ringcard .ringmap{grid-template-columns:200px minmax(0,1fr) 232px;height:100%}
 .two,#tiles,.llmcard{grid-column:2}
 #tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
 #tiles .tile{grid-column:span 2}
@@ -321,12 +323,12 @@ function lab(c, emoji, name, value, text, act2) {
 }
 function leftBoxes(s) {
   const path = s.path;
-  const out = [lab(TH.you, '🧑', 'You', plural(path.messages ?? 0, 'message'), `What you typed to give instructions. You stopped agents ${plural(path.stops ?? 0, 'time')}.`, 'you')];
+  const out = [lab(TH.you, '🧑', 'You', plural(path.messages ?? 0, 'message'), `You stopped agents ${plural(path.stops ?? 0, 'time')}.`, 'you')];
   for (const x of keys()) {
     const v = statOf(x);
-    out.push(lab(COL[x], '🤖', `${NAME[x]} agents`, `${num(v.agents)} main + ${plural(v.subagents, 'subagent')}`, `A main agent is one ${NAME[x]} chat session. It can start subagents, which are helpers.`, x));
+    out.push(lab(COL[x], '🤖', `${NAME[x]} agents`, `${num(v.agents)} main, ${num(v.subagents)} helpers`, `One main agent is one ${NAME[x]} chat.`, x));
   }
-  out.push(lab(TH.mem, '🧠', 'Memory', `${fmt(s.rereadTokens)} tokens`, 'Earlier chat and files the LLM reads again on each step.', 'memory'));
+  out.push(lab(TH.mem, '🧠', 'Memory', `${fmt(s.rereadTokens)} tokens`, 'Old chat read again at each step.', 'memory'));
   return out.join('');
 }
 function rightBoxes(s) {
