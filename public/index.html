@@ -496,7 +496,7 @@ function saveTokens() {
   setHTML(el, `<button class="dl-bar"><i>💡</i><span class="dl-t"><b>Your Token Advice</b><small>${esc(short)}</small></span><em>Open →</em></button>`);
   setHTML($('advicePage'), `<button class="ad-back">← Back to dashboard</button>
 <h2 class="ad-title">💡 Your Token Advice</h2>
-<p class="dl-note">This is our best guess. We replayed your long chats as if you started a fresh chat every ${a.longChatSteps} steps. A step is one action by the AI. We cannot read your chats, so some long chats may have been needed.</p>
+<p class="dl-note">This is a guess. We pretended you started a new chat every ${a.longChatSteps} steps. One step is one action by the AI. We cannot read your chats, so some long chats may have been needed.</p>
 <div class="card ad-sum"><div class="sv-sum"><span>You could have used about</span><b>${fmt(a.saved)} fewer tokens</b><small>That is ${share.toFixed(0)}% of the tokens spent rereading old chat</small></div></div>
 <h3 class="bub-h">Tips to use fewer tokens</h3>${general}
 <div class="card ad-list"><h3 class="sv-h">Your last chat</h3>${saveRow(a.latest)}
