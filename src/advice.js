@@ -59,7 +59,7 @@ export function sessionAdvice(facts) {
   if (chatSteps > LONG_CHAT_STEPS) {
     const save = replaySaving(facts);
     saved += save;
-    if (save > 0) tips.push({ kind: 'long-chat', tested: true, save, text: `This chat got very long, with ${chatSteps} steps. The AI reread about ${compact(rereadTokens / steps)} tokens of old chat at every step. Starting a fresh chat every ${LONG_CHAT_STEPS} steps could have saved about ${compact(save)} tokens.` });
+    if (save > 0) tips.push({ kind: 'long-chat', tested: true, save, text: `This chat got very long, with ${chatSteps} steps. The AI reread about ${compact(rereadTokens / steps)} tokens of old chat at every step. Starting a fresh chat every ${LONG_CHAT_STEPS} steps could have cut up to ${compact(save)} re-read tokens.` });
   }
   const messages = path.messages ?? 0;
   const actions = path.actions ?? 0;

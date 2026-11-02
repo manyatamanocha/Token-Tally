@@ -183,7 +183,7 @@ test('a long growing chat gets a tested saving', () => {
   const a = sessionAdvice(facts(600, 1200000, {}, 'm', { requests: growing(600) }));
   assert.equal(a.saved > 0, true);
   assert.equal(a.tips[0].tested, true);
-  assert.match(a.tips[0].text, /Starting a fresh chat every 300 steps could have saved about/);
+  assert.match(a.tips[0].text, /Starting a fresh chat every 300 steps could have cut up to/);
 });
 
 test('a short chat gets no saving and no tip', () => {

@@ -489,7 +489,7 @@ function saveRow(r) {
   const open = openSave === r.at;
   const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>No issues found in this chat.</span></div>';
   const when = new Date(r.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
-  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${when}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${plural(r.steps, 'step')}</span><b>${r.saved ? `Could save ${fmt(r.saved)}` : 'No issues found'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
+  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${when}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${plural(r.steps, 'step')}</span><b>${r.saved ? `Could cut up to ${fmt(r.saved)} re-read tokens` : 'No issues found'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
 }
 function lastChatCard(a) {
   const r = a.latest;
@@ -530,15 +530,15 @@ function saveTokens() {
   const allRows = v.advice.all.filter((r) => !pick || r.productId === pick);
   const tip = a.latest.tips.find((x) => x.save);
   const short = tip?.save
-    ? `Your last chat: you could have used about ${fmt(tip.save)} fewer tokens.`
+    ? `Your last chat: you could have cut up to ${fmt(tip.save)} re-read tokens.`
     : 'No issues found in your last chat. Nice work!';
   setHTML(el, `<button class="dl-bar"><i>💡</i><span class="dl-t"><b>Your Token Advice</b><small>${esc(short)}</small></span><em>Open →</em></button>`);
   setHTML($('advicePage'), `<button class="ad-back">← Back to dashboard</button>
 <h2 class="ad-title">💡 Your Token Advice</h2>
-<p class="dl-note">This is a guess. We pretended you started a new chat every ${a.longChatSteps} steps. One step is one action by the AI. We cannot read your chats, so some long chats may have been needed.</p>
+<p class="dl-note">This is a guess. We pretended you started a new chat every ${a.longChatSteps} steps. One step is one action by the AI. We cannot read your chats, so some long chats may have been needed. A new chat still uses new tokens. It only stops the AI from re-reading old chat.</p>
 ${lastChatCard(a)}
 ${progressCard(a)}
-<div class="card ad-sum"><div class="sv-sum"><span>You could have used about</span><b>${fmt(a.saved)} fewer tokens</b><small>That is ${share.toFixed(0)}% of the tokens spent rereading old chat</small></div></div>
+<div class="card ad-sum"><div class="sv-sum"><span>You could have cut up to</span><b>${fmt(a.saved)} re-read tokens</b><small>That is ${share.toFixed(0)}% of the tokens spent rereading old chat</small></div></div>
 <h3 class="bub-h">Tips to use fewer tokens</h3>${general}
 <div class="card ad-list">${worst.length ? `<h3 class="sv-h">Chats where you could save the most</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}
 <button class="ad-all" aria-expanded="${showAll}">${showAll ? 'Hide sessions' : `See all ${a.count} sessions`}</button>
