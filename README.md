@@ -1,4 +1,4 @@
-# Ship Tally
+# Token Tally
 
 A live dashboard for people who build with Claude Code and Codex. It shows what each product took to make, and where the tokens went.
 
