@@ -112,6 +112,7 @@ function readAssistant(entry, time, state) {
       output: usage.output_tokens ?? 0,
       newTokens: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0),
       rereadTokens: usage.cache_read_input_tokens ?? 0,
+      agent: state.agent ?? 0,
     });
   }
 }
@@ -151,7 +152,7 @@ function fileKeysByRoot(files, resolveRoot) {
 
 export function summarize(state, sessionId, resolveRoot, subagents, extra = {}) {
   const requests = {};
-  for (const [id, r] of state.requests) requests[id] = [r.time, r.model, r.newTokens, r.rereadTokens];
+  for (const [id, r] of state.requests) requests[id] = r.agent ? [r.time, r.model, r.newTokens, r.rereadTokens, r.agent] : [r.time, r.model, r.newTokens, r.rereadTokens];
   // A resumed session copies old messages to the top of its log. Their times are not new work.
   const times = [...state.times.filter((t) => t > state.lastCopiedAt), ...[...state.requests.values()].map((r) => r.time)];
   const spans = mergeSpans(times.map((t) => [t, t]));
@@ -180,6 +181,9 @@ export function summarize(state, sessionId, resolveRoot, subagents, extra = {}) 
 export async function parseSession({ sessionId, mainPath, subagentPaths = [], resolveRoot, skipRequest = () => false }) {
   const state = newState(skipRequest);
   if (mainPath) await readLog(mainPath, state, true);
-  for (const path of subagentPaths) await readLog(path, state, false);
+  for (const [i, path] of subagentPaths.entries()) {
+    state.agent = i + 1; // Each subagent is its own chat.
+    await readLog(path, state, false);
+  }
   return summarize(state, sessionId, resolveRoot, subagentPaths.length);
 }

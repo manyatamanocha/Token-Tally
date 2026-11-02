@@ -158,6 +158,20 @@ h2{font-weight:700}
 .ad-sum .sv-sum{margin:6px 0}
 .ad-sum .sv-sum b{font-size:30px}
 .ad-list .sv-h:first-child{margin-top:0}
+.ad-sub{margin:0 0 10px;text-align:center;font-size:13.5px;color:var(--soft)}
+.ad-tips{display:grid;gap:14px;padding-bottom:8px}
+.ad-last .bub{font-size:15px;padding:14px 18px}
+.wks{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;margin-bottom:8px}
+.wk{display:grid;justify-items:center;gap:3px;font-size:12px;color:var(--mut);text-align:center}
+.wk b{font:600 12.5px var(--mono);color:var(--ink)}
+.wk-t{display:flex;align-items:flex-end;justify-content:center;width:100%;height:120px}
+.wk-t i{display:block;width:min(46px,70%);border-radius:7px 7px 0 0;background:var(--acc);animation:wkup .45s ease-out;transform-origin:bottom}
+.wk small{font:11.5px var(--mono);white-space:nowrap}
+@keyframes wkup{from{transform:scaleY(0)}}
+@media(prefers-reduced-motion:reduce){.wk-t i{animation:none}}
+.ad-all{all:unset;display:block;margin:12px auto 0;padding:7px 16px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;color:var(--acc);box-shadow:var(--shadow)}
+.ad-all:hover{box-shadow:var(--press)}
+.ad-all:focus-visible{outline:2px solid var(--acc)}
 .dl-note{margin:0 0 8px;text-align:center;font-size:12.5px;color:var(--mut)}
 .sv-sum{text-align:center;margin:6px 0 10px}
 .sv-sum span,.sv-sum small{display:block;color:var(--mut);font-size:13px}
@@ -176,7 +190,7 @@ h2{font-weight:700}
 @keyframes pop{from{transform:scale(.92);opacity:0}}
 @media(prefers-reduced-motion:reduce){.bubs .bub{animation:none}}
 .sv-h{margin:12px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
-.sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 150px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
+.sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:112px minmax(0,1fr) 60px 90px 150px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
 .sv-row:hover{background:var(--hover)}
 .sv-row:focus-visible{outline:2px solid var(--acc)}
 .sv-row b{text-align:right;font:600 13.5px var(--mono);color:var(--hi)}
@@ -245,7 +259,7 @@ const NAME = { claude: 'Claude', codex: 'Codex' };
 const EMPTY = { id: '', name: '', newTokens: 0, rereadTokens: 0, requests: 0, agents: 0, subagents: 0, days: 0, hours: 0, files: 0, path: {}, pathMissing: 0, perDay: [], perModel: [], topSessions: [], lastAt: 0 };
 const $ = (id) => document.getElementById(id);
 
-let openSave = null, data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
+let showAll = false, openSave = null, data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
 let colors = new Map(), dates = [], trendS = [], trendHover = -1;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -471,10 +485,34 @@ function llmGraph() {
 }
 
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
-function saveRow(r, label) {
+function saveRow(r) {
   const open = openSave === r.at;
-  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>This chat looked good. Nothing to change.</span></div>';
-  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Could save ${fmt(r.saved)}` : 'Looks good'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
+  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>No issues found in this chat.</span></div>';
+  const when = new Date(r.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${when}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${plural(r.steps, 'step')}</span><b>${r.saved ? `Could save ${fmt(r.saved)}` : 'No issues found'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
+}
+function lastChatCard(a) {
+  const r = a.latest;
+  const when = new Date(r.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>No issues found in this chat. Keep going like this.</span></div>';
+  return `<div class="card ad-last"><h3 class="bub-h">Advice from your last chat</h3><p class="ad-sub">${when} · ${esc(r.product)} · ${NAME[r.llm]} · ${plural(r.steps, 'step')}</p><div class="ad-tips">${tips}</div></div>`;
+}
+function progressCard(a) {
+  const weeks = a.weeks;
+  if (!weeks.length) return '';
+  const total = (w) => w.newTokens + w.rereadTokens;
+  const perStep = (w) => (w.steps ? w.rereadTokens / w.steps : 0);
+  const top = Math.max(...weeks.map(total), 1);
+  const bars = weeks.map((w) => `<div class="wk" title="${plural(w.sessions, 'session')}, ${plural(w.longChats, 'long chat')}"><b>${fmt(total(w))}</b><span class="wk-t"><i style="height:${Math.max(total(w) / top * 100, 2)}%"></i></span><span>${shortDate(w.week)}</span><small>${fmt(perStep(w))} a step</small></div>`).join('');
+  let verdict = 'Keep using Token Tally to see your progress over time.';
+  if (weeks.length > 1) {
+    const [before, now] = weeks.slice(-2).map(perStep);
+    const change = before ? Math.round(Math.abs(now - before) / before * 100) : 0;
+    verdict = change < 3 ? `The AI reread about ${fmt(now)} tokens a step, about the same as the week before.`
+      : now < before ? `You are improving. The AI reread ${fmt(now)} tokens a step, ${change}% less than the week before.`
+        : `The AI reread ${fmt(now)} tokens a step, ${change}% more than the week before. Fresh chats can bring this down.`;
+  }
+  return `<div class="card ad-prog"><h3 class="bub-h">Your token use over time</h3><p class="ad-sub">${esc(verdict)}</p><div class="wks">${bars}</div><p class="ad-sub">Each bar is one week, starting on Monday. The last bar can be a part week. Fewer tokens a step is better.</p></div>`;
 }
 function saveTokens() {
   const v = viewOf(k);
@@ -489,18 +527,22 @@ function saveTokens() {
   const idea = (title, text) => `<div class="bub"><b>${title}</b><span>${text}</span><u>Worth trying</u></div>`;
   const general = `<div class="bubs">${tested}${a.repeatedFiles ? idea('📝 Keep a short notes file', `${plural(a.repeatedFiles, 'file')} changed again and again. A short note can save the AI from reading them each time.`) : ''}${idea('✉️ Ask for more in one message', 'Every message makes the AI reread the chat. Put related requests together.')}${idea('🪶 Use a smaller model', 'Small jobs do not need the biggest model.')}</div>`;
   const worst = a.worst.filter((r) => r.at !== a.latest.at);
+  const allRows = v.advice.all.filter((r) => !pick || r.productId === pick);
   const tip = a.latest.tips.find((x) => x.save);
   const short = tip?.save
     ? `Your last chat: you could have used about ${fmt(tip.save)} fewer tokens.`
-    : 'Your last chat looked good. Nice work!';
+    : 'No issues found in your last chat. Nice work!';
   setHTML(el, `<button class="dl-bar"><i>💡</i><span class="dl-t"><b>Your Token Advice</b><small>${esc(short)}</small></span><em>Open →</em></button>`);
   setHTML($('advicePage'), `<button class="ad-back">← Back to dashboard</button>
 <h2 class="ad-title">💡 Your Token Advice</h2>
 <p class="dl-note">This is a guess. We pretended you started a new chat every ${a.longChatSteps} steps. One step is one action by the AI. We cannot read your chats, so some long chats may have been needed.</p>
+${lastChatCard(a)}
+${progressCard(a)}
 <div class="card ad-sum"><div class="sv-sum"><span>You could have used about</span><b>${fmt(a.saved)} fewer tokens</b><small>That is ${share.toFixed(0)}% of the tokens spent rereading old chat</small></div></div>
 <h3 class="bub-h">Tips to use fewer tokens</h3>${general}
-<div class="card ad-list"><h3 class="sv-h">Your last chat</h3>${saveRow(a.latest)}
-${worst.length ? `<h3 class="sv-h">Chats where you could save the most</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>`);
+<div class="card ad-list">${worst.length ? `<h3 class="sv-h">Chats where you could save the most</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}
+<button class="ad-all" aria-expanded="${showAll}">${showAll ? 'Hide sessions' : `See all ${a.count} sessions`}</button>
+${showAll ? `<h3 class="sv-h">All sessions, newest first</h3>${allRows.map((r) => saveRow(r)).join('')}` : ''}</div>`);
 }
 function showPage() {
   const on = location.hash === '#advice';
@@ -721,6 +763,7 @@ mapEl.addEventListener('mouseleave', () => { hover = -1; if (still) draw(0); });
 $('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar')) location.hash = 'advice'; });
 $('advicePage').addEventListener('click', (e) => {
   if (e.target.closest('.ad-back')) { location.hash = ''; return; }
+  if (e.target.closest('.ad-all')) { showAll = !showAll; saveTokens(); return; }
   const r = e.target.closest('.sv-row');
   if (r) { const at = +r.dataset.at; openSave = openSave === at ? null : at; saveTokens(); }
 });

@@ -1,7 +1,7 @@
 import { closeSync, cpSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const VERSION = 2;
+const VERSION = 3;
 
 export function newRecord() {
   return {
@@ -38,6 +38,7 @@ export function loadRecord(path) {
   if (parsed?.version > VERSION) throw new Error(`${path} was made by a newer version of this tool. Update the tool.`);
   if (parsed?.version === VERSION) return { ...newRecord(), ...parsed };
   if (parsed?.version === 1) return upgradeFromV1(parsed);
+  if (parsed?.version === 2) return { ...newRecord(), ...parsed, version: VERSION, seen: {} }; // Read logs again to mark subagent steps.
   const recovered = `${path}.bad-${Date.now()}`;
   renameSync(path, recovered);
   return { ...newRecord(), recovered };

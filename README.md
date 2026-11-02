@@ -21,6 +21,7 @@ Use the same command to open the dashboard later. Keep the terminal window open 
 A "Your Token Advice" bar under the top numbers shows one line about your last chat. Click it to open the advice page.
 
 - **Tested:** "Start a new chat more often." The saving comes from replaying each long chat as if a new chat started every 300 steps. It is an estimate, it counts tokens and not money, and a real new chat also needs some catching up.
+- **Each chat counts alone:** A subagent is its own chat, so it is replayed apart from the main chat.
 - **Ideas:** The other tips are ideas to try. They have not been tested, so they show no saving.
 
 The tool cannot read your chats, so it cannot know if a task needed the extra steps.

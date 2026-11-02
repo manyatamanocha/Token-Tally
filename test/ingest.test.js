@@ -94,7 +94,7 @@ test('new record has no sessions', () => {
 });
 test('saves with a temp file and rename', () => {
   saveRecord(recordPath, newRecord());
-  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 2);
+  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 3);
   assert.deepEqual(readdirSync(join(dir, 'state')), ['record.json']);
 });
 test('a corrupt record is kept and reported, and a new one starts', () => {
@@ -119,9 +119,9 @@ test('a read error does not reset the record', () => {
   assert.ok(existsSync(recordPath));
 });
 test('a newer record version stops and keeps the file', () => {
-  saveRecord(recordPath, { ...newRecord(), version: 3 });
+  saveRecord(recordPath, { ...newRecord(), version: 4 });
   assert.throws(() => loadRecord(recordPath), /newer version/);
-  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 3);
+  assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 4);
 });
 test('the recovered path is not saved', () => {
   saveRecord(recordPath, { ...newRecord(), recovered: '/x' });

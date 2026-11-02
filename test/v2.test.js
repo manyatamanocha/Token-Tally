@@ -148,7 +148,7 @@ test('a version 1 record upgrades, keeps totals and reads logs again', async () 
   const session = { sessionId: 'old', byDay: { '2026-10-01': { newTokens: 500, rereadTokens: 9, requests: 2 } }, byModel: {}, requests: {}, spans: [[1, 2]], startedAt: 1, lastAt: 2, subagents: 0, written: {}, read: {}, cwdRoot: null };
   saveRecord(recordPath, { ...newRecord(), version: 1, sessions: { old: session }, seen: { a: { mtimeMs: 1, size: 1 } } });
   const record = loadRecord(recordPath);
-  assert.equal(record.version, 2);
+  assert.equal(record.version, 3);
   assert.deepEqual(record.seen, {});
   assert.equal(record.sessions.old.llm, 'claude');
   const d = buildDashboard(record, 0);
@@ -223,4 +223,37 @@ test('the old folder is copied once and kept', () => {
   assert.equal(readFileSync(join(to, 'record.json'), 'utf8'), '{}');
   assert.equal(readFileSync(join(from, 'record.json'), 'utf8'), '{}');
   assert.equal(moveOldState(from, to), false);
+});
+
+test('a version 2 record reads logs again', () => {
+  saveRecord(recordPath, { ...newRecord(), version: 2, seen: { a: { mtimeMs: 1, size: 1 } } });
+  const record = loadRecord(recordPath);
+  assert.equal(record.version, 3);
+  assert.deepEqual(record.seen, {});
+});
+
+test('subagent steps are marked, and each chat is replayed alone', async () => {
+  const main = join(dir, 'm.jsonl');
+  const sub = join(dir, 's.jsonl');
+  writeFileSync(main, assistant('r1'));
+  writeFileSync(sub, assistant('r2'));
+  const f = await parseSession({ sessionId: 's', mainPath: main, subagentPaths: [sub], resolveRoot: () => null });
+  assert.equal(f.requests.r1.length, 4);
+  assert.equal(f.requests.r2[4], 1);
+  const mixed = Object.fromEntries(Object.entries(growing(400)).map(([id, r], i) => [id, i % 2 ? [...r, 1] : r]));
+  assert.equal(sessionAdvice(facts(400, 1000, {}, 'm', { requests: mixed })).chatSteps, 200);
+  assert.equal(replaySaving({ requests: mixed }), 0);
+});
+
+test('sessions group into weeks starting on Monday', () => {
+  const at = (d) => new Date(`2026-10-${d}T12:00:00`).getTime();
+  const list = [facts(10, 100, {}, 'm', { lastAt: at(12) }), facts(10, 300, {}, 'm', { lastAt: at(18) }), facts(10, 500, {}, 'm', { lastAt: at(19) })];
+  const { weeks } = buildAdvice(list, () => ({}));
+  assert.deepEqual(weeks.map((w) => [w.week, w.sessions, w.rereadTokens]), [['2026-10-12', 2, 400], ['2026-10-19', 1, 500]]);
+});
+
+test('all sessions are kept only when asked, newest first', () => {
+  const list = [facts(5, 5, {}, 'm', { lastAt: 1 }), facts(5, 5, {}, 'm', { lastAt: 9 })];
+  assert.equal(buildAdvice(list, () => ({})).all, undefined);
+  assert.deepEqual(buildAdvice(list, () => ({}), { keepAll: true }).all.map((r) => r.at), [9, 1]);
 });

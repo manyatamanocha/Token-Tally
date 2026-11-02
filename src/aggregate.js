@@ -197,7 +197,7 @@ export function buildDashboard(record, now, llm = null) {
     sessionCount: sessions.length,
     totals: toStats('all', 'All products', everything),
     advice: {
-      ...buildAdvice(sessions, describe),
+      ...buildAdvice(sessions, describe, { keepAll: true }),
       byProduct: Object.fromEntries([...new Set(sessions.map((s) => topProduct(s, overrides)))].map((id) => [id, buildAdvice(sessions.filter((s) => topProduct(s, overrides) === id), describe)])),
     },
     tape: sessions.filter((s) => Object.values(s.byDay).some((d) => d.newTokens > 0)).sort((a, b) => b.lastAt - a.lastAt).slice(0, TAPE_SIZE).map((s) => tapeRow(s, overrides, nameOf)),
