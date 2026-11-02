@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as zlib from 'node:zlib';
-import { buildAdvice, sessionAdvice } from '../src/advice.js';
+import { buildAdvice, replaySaving, sessionAdvice } from '../src/advice.js';
 import { buildDashboard } from '../src/aggregate.js';
 import { parseCodexSession } from '../src/codex.js';
 import { ingest } from '../src/ingest.js';
@@ -162,10 +162,28 @@ const facts = (steps, reread, path = {}, model = 'gpt-x', extra = {}) => ({
   byModel: { [model]: { newTokens: steps * 5000 } }, path, lastAt: 1, ...extra,
 });
 
-test('a long chat gets a saving estimate', () => {
-  const a = sessionAdvice(facts(600, 1200000));
-  assert.equal(a.saved, 600000);
-  assert.match(a.tips[0].text, /could have saved about 600\.0K tokens/);
+const growing = (steps, size = 1000) => Object.fromEntries(Array.from({ length: steps }, (_, i) => [`r${i}`, [i, 'm', 5000, (i + 1) * size]]));
+
+test('the replay matches a hand count', () => {
+  const requests = growing(600);
+  const base = 5500;
+  let expected = 0;
+  for (let i = 300; i < 600; i += 1) expected += 1000 * (i + 1) - Math.max(base, 1000 * (i + 1) - 1000 * (i - (i % 300) + 1) + base);
+  assert.equal(replaySaving({ requests }), expected);
+});
+
+test('a long chat that never grows has no saving and no tip', () => {
+  const requests = Object.fromEntries(Array.from({ length: 600 }, (_, i) => [`r${i}`, [i, 'm', 5000, 1000]]));
+  const a = sessionAdvice(facts(600, 600000, {}, 'm', { requests }));
+  assert.equal(a.saved, 0);
+  assert.deepEqual(a.tips, []);
+});
+
+test('a long growing chat gets a tested saving', () => {
+  const a = sessionAdvice(facts(600, 1200000, {}, 'm', { requests: growing(600) }));
+  assert.equal(a.saved > 0, true);
+  assert.equal(a.tips[0].tested, true);
+  assert.match(a.tips[0].text, /A replay with a new chat every 300 steps saved about/);
 });
 
 test('a short chat gets no saving and no tip', () => {
@@ -174,15 +192,18 @@ test('a short chat gets no saving and no tip', () => {
   assert.deepEqual(a.tips, []);
 });
 
-test('many short messages, many stops and a large model each get a tip', () => {
+test('the untested tips show no saving and say Idea', () => {
   const small = facts(120, 1000, { messages: 80, actions: 100, stops: 4 }, 'claude-opus-x');
   small.byDay['2026-10-01'].newTokens = 12000;
   small.byModel['claude-opus-x'].newTokens = 12000;
-  assert.deepEqual(sessionAdvice(small).tips.map((t) => t.kind), ['short-messages', 'large-model', 'stops']);
+  const { tips, saved } = sessionAdvice(small);
+  assert.deepEqual(tips.map((x) => x.kind), ['short-messages', 'large-model', 'stops']);
+  assert.equal(saved, 0);
+  assert.equal(tips.every((x) => x.text.startsWith('Idea:') && x.tested === false), true);
 });
 
 test('advice lists the latest session and the biggest savings', () => {
-  const a = buildAdvice([facts(600, 1200000, {}, 'm', { lastAt: 1 }), facts(10, 100, {}, 'm', { lastAt: 9 })], () => ({ product: 'p' }));
+  const a = buildAdvice([facts(600, 1200000, {}, 'm', { lastAt: 1, requests: growing(600) }), facts(10, 100, {}, 'm', { lastAt: 9 })], () => ({ product: 'p' }));
   assert.equal(a.latest.at, 9);
   assert.equal(a.worst.length, 1);
   assert.equal(a.longChats, 1);

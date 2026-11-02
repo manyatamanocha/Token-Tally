@@ -151,6 +151,9 @@ h2{font-weight:700}
 .sv-top b{display:block;font-size:24px;font-weight:600;color:var(--hi);line-height:1.2}
 .sv-top ul,.sv-tips{margin:0;padding-left:18px;font-size:14px;color:var(--soft);display:grid;gap:4px}
 .sv-top ul b{display:inline;font-size:14px;color:var(--ink)}
+.sv-top>.sv-g{text-align:left}
+.sv-g .sv-h{margin:6px 0 2px}
+.sv-g ul{padding-left:18px}
 .sv-h{margin:12px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
 .sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 110px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
 .sv-row:hover{background:var(--hover)}
@@ -448,7 +451,7 @@ function llmGraph() {
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
 function saveRow(r, label) {
   const open = openSave === r.at;
-  const tips = r.tips.length ? r.tips.map((t) => `<li>${esc(t.text)}</li>`).join('') : '<li>This session looked efficient.</li>';
+  const tips = r.tips.length ? r.tips.map((x) => `<li>${esc(x.text)}</li>`).join('') : '<li>This session looked efficient.</li>';
   return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Save ${fmt(r.saved)}` : 'Good'}</b></button>${open ? `<ul class="sv-tips">${tips}</ul>` : ''}`;
 }
 function saveTokens() {
@@ -458,20 +461,23 @@ function saveTokens() {
   if (!a || !a.latest) { el.hidden = true; return; }
   el.hidden = false;
   const share = a.rereadTokens ? a.saved / a.rereadTokens * 100 : 0;
-  const general = [
-    a.longChats ? `<li><b>Start a new chat more often.</b> ${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</li>` : `<li><b>Your chats are a good length.</b> None went past ${a.longChatSteps} steps.</li>`,
-    a.repeatedFiles ? `<li><b>Keep short notes for files you return to.</b> ${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions, so agents read them again each time.</li>` : '',
-    '<li><b>Put several requests in one message.</b> Each message makes the LLM read the chat again.</li>',
-    '<li><b>Use a smaller model for small jobs.</b> Keep the largest model for hard work.</li>',
+  const tested = a.longChats
+    ? `<li><b>Start a new chat more often.</b> ${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</li>`
+    : `<li><b>Your chats are a good length.</b> None went past ${a.longChatSteps} steps.</li>`;
+  const ideas = [
+    a.repeatedFiles ? `<li>Keep short notes for files you return to. ${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions.</li>` : '',
+    '<li>Put several requests in one message.</li>',
+    '<li>Use a smaller model for small jobs.</li>',
   ].join('');
+  const general = `<div class="sv-g"><h3 class="sv-h">Tested on your logs</h3><ul>${tested}</ul><h3 class="sv-h">Ideas to try, not tested</h3><ul>${ideas}</ul></div>`;
   const worst = a.worst.filter((r) => r.at !== a.latest.at);
-  const tip = a.latest.tips[0];
+  const tip = a.latest.tips.find((x) => x.save);
   const short = tip?.save
     ? `Last session: about ${fmt(tip.save)} tokens could have been saved.`
-    : tip ? 'Last session: one small change could help next time.' : 'Last session looked efficient. Nice work!';
+    : 'Last session looked efficient. Nice work!';
   const more = saveOpen ? `<div class="dl-more">
-<p class="dl-note">These are estimates from your numbers. Token Tally cannot read your chats, so it cannot know if a task needed the extra steps.</p>
-<div class="sv-top"><div><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div><ul>${general}</ul></div>
+<p class="dl-note">The saving comes from replaying your long chats with a new chat every ${a.longChatSteps} steps. It is an estimate, and it counts tokens, not money. Token Tally cannot read your chats, so it cannot know if a task needed the extra steps.</p>
+<div class="sv-top"><div><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div>${general}</div>
 <h3 class="sv-h">Last session</h3>${saveRow(a.latest)}
 ${worst.length ? `<h3 class="sv-h">Biggest chances to save</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>` : '';
   setHTML(el, `<button class="dl-bar" aria-expanded="${saveOpen}"><i>💡</i><span>${esc(short)}</span><b>${saveOpen ? 'Hide tips' : 'See tips'}</b></button>${more}`);

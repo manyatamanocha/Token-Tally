@@ -18,7 +18,12 @@ Use the same command to open the dashboard later. Keep the terminal window open 
 
 ## Save tokens
 
-The Save tokens section looks at each session and gives advice, such as starting a new chat sooner. Savings are estimates from numbers only. The tool cannot read your chats, so it cannot know if a task needed the extra steps. It assumes that a chat split at 300 steps keeps about 300/N of its re-read tokens.
+One line under the top numbers gives advice after each session. Open it to see more.
+
+- **Tested:** "Start a new chat more often." The saving comes from replaying each long chat as if a new chat started every 300 steps. It is an estimate, it counts tokens and not money, and a real new chat also needs some catching up.
+- **Ideas:** The other tips are ideas to try. They have not been tested, so they show no saving.
+
+The tool cannot read your chats, so it cannot know if a task needed the extra steps.
 
 ## What each number means
 

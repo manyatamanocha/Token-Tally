@@ -19,31 +19,44 @@ function totals(facts) {
   };
 }
 
-/* Re-read tokens grow with chat length, so splitting one chat of N steps into chats
-   of C steps keeps about C/N of them. */
+/* Replay a chat step by step, as if a new chat started every LONG_CHAT_STEPS steps.
+   A new chat keeps the small context of the first steps and drops what built up since
+   the last restart. This is a simulation, because a real new chat also needs catching up. */
+export function replaySaving(facts, every = LONG_CHAT_STEPS) {
+  const rereads = Object.values(facts.requests ?? {}).sort((a, b) => a[0] - b[0]).map((r) => r[3]);
+  if (rereads.length <= every) return 0;
+  const first = rereads.slice(0, 10);
+  const base = first.reduce((a, b) => a + b, 0) / first.length;
+  let saved = 0;
+  rereads.forEach((value, i) => {
+    if (i < every) return;
+    const restart = rereads[i - (i % every)];
+    saved += value - Math.max(base, value - restart + base);
+  });
+  return Math.max(0, saved);
+}
+
 export function sessionAdvice(facts) {
   const { steps, newTokens, rereadTokens } = totals(facts);
   const path = facts.path ?? {};
   const tips = [];
   let saved = 0;
   if (steps > LONG_CHAT_STEPS) {
-    const save = rereadTokens * (1 - LONG_CHAT_STEPS / steps);
+    const save = replaySaving(facts);
     saved += save;
-    tips.push({ kind: 'long-chat', save, text: `This chat ran ${steps} steps and re-read about ${compact(rereadTokens / steps)} tokens on each step. A new chat every ${LONG_CHAT_STEPS} steps could have saved about ${compact(save)} tokens.` });
+    if (save > 0) tips.push({ kind: 'long-chat', tested: true, save, text: `This chat ran ${steps} steps and re-read about ${compact(rereadTokens / steps)} tokens on each step. A replay with a new chat every ${LONG_CHAT_STEPS} steps saved about ${compact(save)} tokens.` });
   }
   const messages = path.messages ?? 0;
   const actions = path.actions ?? 0;
   if (messages >= MANY_MESSAGES && actions / messages < FEW_STEPS_PER_MESSAGE) {
-    const save = (messages / 2) * (rereadTokens / (steps || 1));
-    saved += steps > LONG_CHAT_STEPS ? 0 : save;
-    tips.push({ kind: 'short-messages', save, text: `You sent ${messages} messages, and agents took few steps for each one. Each message re-reads the chat, so putting several requests into one message could have saved about ${compact(save)} tokens.` });
+    tips.push({ kind: 'short-messages', tested: false, save: 0, text: `Idea: you sent ${messages} messages, and agents took few steps for each one. Try putting several requests into one message.` });
   }
   const [model] = Object.entries(facts.byModel).sort((a, b) => b[1].newTokens - a[1].newTokens)[0] ?? [];
   if (model && LARGE_MODEL.test(model) && steps >= 100 && newTokens / steps < SMALL_STEP_TOKENS) {
-    tips.push({ kind: 'large-model', save: 0, text: `Most steps were small, but they used ${model}, a large model. A smaller model can often do small steps at a lower cost.` });
+    tips.push({ kind: 'large-model', tested: false, save: 0, text: `Idea: most steps were small, but they used ${model}, a large model. Try a smaller model for small steps.` });
   }
   if ((path.stops ?? 0) >= MANY_STOPS) {
-    tips.push({ kind: 'stops', save: 0, text: `You stopped agents ${path.stops} times. Work before a stop is often repeated, so a clearer first message can help.` });
+    tips.push({ kind: 'stops', tested: false, save: 0, text: `Idea: you stopped agents ${path.stops} times. Try a clearer first message.` });
   }
   return { steps, newTokens, rereadTokens, saved, tips };
 }
