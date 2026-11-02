@@ -125,6 +125,11 @@ h2{font-weight:700}
 .dnmore{display:grid;grid-template-columns:minmax(0,1fr) 74px 54px;gap:3px 10px;margin:2px 6px 6px 28px;font:12.5px var(--mono);color:var(--soft)}
 .dnmore b{text-align:right;color:var(--ink)}.dnmore em{font-style:normal;text-align:right;color:var(--mut)}
 .dnr+.dnmore+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
+.ag{all:unset;box-sizing:border-box;display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:12px 10px;border-radius:10px;cursor:pointer;font-size:15px}
+.ag i{width:14px;height:14px;border-radius:5px;background:var(--c)}.ag strong{color:var(--c);font-size:17px}
+.ag b{font:600 18px var(--mono)}.ag:hover,.ag.sel{background:var(--hover)}.ag:focus-visible{outline:2px solid var(--acc)}
+.agin{margin:0 0 10px 26px;padding-left:12px;border-left:1px solid var(--line)}
+.agh{margin:4px 6px 4px;font-size:12.5px;color:var(--mut)}
 .dnr+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
 @media(max-width:760px){.dn{grid-template-columns:minmax(0,1fr)}}
 .vparts{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px}
@@ -208,7 +213,7 @@ main{grid-template-columns:minmax(0,1fr)}
       <div class="card"><h2>▪ TOKENS OVER TIME <em>New tokens each day. Move your mouse over it to read a day.</em></h2><canvas id="trend"></canvas></div>
     </section>
     <section class="tiles" id="tiles"></section>
-    <section class="card"><h2>LLM <span id="llmfor" style="color:var(--mut);font-weight:400"></span></h2><div id="models"></div></section>
+    <section class="card"><h2>Which AI did the work <span id="llmfor" style="color:var(--mut);font-weight:400"></span></h2><div id="models"></div></section>
     <div id="changes"></div>
   </div>
 </main>
@@ -415,37 +420,41 @@ function llmGraph() {
   const box = $('models');
   if (!bars.length) { setHTML(box, '<p class="sub">No model data yet.</p>'); return; }
   const total = bars.reduce((a, b) => a + b.value, 0) || 1;
-  const groups = keys().map((x) => ({ x, rows: bars.filter((b) => b.x === x) })).filter((g) => g.rows.length);
-  for (const g of groups) {
-    const rest = g.rows.slice(3);
-    if (rest.length < 2) continue;
+  const groups = keys().map((x) => {
+    const rows = bars.filter((b) => b.x === x).sort((a, b) => b.value - a.value);
+    rows.forEach((b, i) => { b.shade = `color-mix(in srgb, ${COL[x]} ${Math.max(38, 100 - i * 14)}%, var(--card))`; });
     const merged = new Map();
-    for (const r of rest) for (const p of r.parts) { const m = merged.get(p.name) ?? { ...p, value: 0 }; m.value += p.value; merged.set(p.name, m); }
-    g.rows = [...g.rows.slice(0, 3), { key: `${g.x}:__other`, x: g.x, model: `Other ${NAME[g.x]} models`, value: rest.reduce((a, r) => a + r.value, 0), parts: [...merged.values()].sort((a, b) => b.value - a.value), rest }];
-  }
-  for (const g of groups) g.rows.forEach((b, i) => { b.shade = `color-mix(in srgb, ${COL[g.x]} ${Math.max(38, 100 - i * 15)}%, var(--card))`; });
+    for (const r of rows) for (const p of r.parts) { const m = merged.get(p.name) ?? { ...p, value: 0 }; m.value += p.value; merged.set(p.name, m); }
+    return { x, rows, value: rows.reduce((a, r) => a + r.value, 0), parts: [...merged.values()].sort((a, b) => b.value - a.value) };
+  }).filter((g) => g.rows.length).sort((a, b) => b.value - a.value);
+  const inGroup = (g) => openModel === g.x || (openModel ?? '').startsWith(`${g.x}:`);
   const R = 78, C = 2 * Math.PI * R;
   let at = 0;
-  const rings = groups.flatMap((g) => g.rows).map((b) => {
-    const len = b.value / total * C;
-    const dim = openModel && openModel !== b.key;
-    const c = `<circle class="${dim ? 'dim' : ''}" data-m="${esc(b.key)}" cx="100" cy="100" r="${R}" stroke="${b.shade}" stroke-dasharray="${Math.max(len - 1.5, 0.6)} ${C}" stroke-dashoffset="${-at}"><title>${esc(b.model)}: ${fmt(b.value)} new tokens</title></circle>`;
+  const rings = groups.map((g) => {
+    const len = g.value / total * C;
+    const dim = openModel && !inGroup(g);
+    const c = `<circle class="${dim ? 'dim' : ''}" data-m="${g.x}" cx="100" cy="100" r="${R}" stroke="${COL[g.x]}" stroke-dasharray="${Math.max(len - 2, 0.6)} ${C}" stroke-dashoffset="${-at}"><title>${NAME[g.x]}: ${fmt(g.value)} new tokens</title></circle>`;
     at += len;
     return c;
   }).join('');
-  const scope = pick ? 'of this product' : 'of all new tokens';
+  const chips = (parts) => `<div class="vparts">${parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>`;
+  const scope = pick ? 'of this product\'s new tokens' : 'of all new tokens';
   const list = groups.map((g) => {
-    const sum = g.rows.reduce((a, b) => a + b.value, 0);
-    const rows = g.rows.map((b) => {
-      const open = openModel === b.key;
-      const more = open && b.rest ? `<div class="dnmore">${b.rest.map((r) => `<span>${esc(r.model)}</span><b>${fmt(r.value)}</b><em>${(r.value / total * 100).toFixed(1)}%</em>`).join('')}</div>` : '';
-      const det = open ? `${more}<div class="vparts">${pick ? '<span>This model worked on this product only.</span>' : b.parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>` : '';
-      return `<button class="dnr${open ? ' sel' : ''}" data-m="${esc(b.key)}" aria-expanded="${open}"><i style="background:${b.shade}"></i><span title="${esc(b.model)}">${esc(b.model)}</span><b>${fmt(b.value)}</b><em>${(b.value / total * 100).toFixed(1)}%</em></button>${det}`;
-    }).join('');
-    return `<div class="dng" style="--c:${COL[g.x]}"><strong>${NAME[g.x]}</strong><b>${fmt(sum)}</b><span>new tokens, ${(sum / total * 100).toFixed(1)}% ${scope}</span></div>${rows}`;
+    const open = inGroup(g);
+    let inner = '';
+    if (open) {
+      const rows = g.rows.map((b) => {
+        const sel = openModel === b.key;
+        const det = sel ? (pick ? '<div class="vparts"><span>This model worked on this product only.</span></div>' : chips(b.parts)) : '';
+        return `<button class="dnr${sel ? ' sel' : ''}" data-m="${esc(b.key)}" aria-expanded="${sel}"><i style="background:${b.shade}"></i><span title="${esc(b.model)}">${esc(b.model)}</span><b>${fmt(b.value)}</b><em>${(b.value / g.value * 100).toFixed(1)}%</em></button>${det}`;
+      }).join('');
+      const worked = pick || openModel !== g.x ? '' : `<p class="agh">Worked on these products:</p>${chips(g.parts)}`;
+      inner = `<div class="agin"><p class="agh">Models used. Click one to see its products.</p>${rows}${worked}</div>`;
+    }
+    return `<button class="ag${open ? ' sel' : ''}" data-m="${g.x}" style="--c:${COL[g.x]}" aria-expanded="${open}"><i></i><span><strong>${NAME[g.x]}</strong> did ${(g.value / total * 100).toFixed(1)}% ${scope}</span><b>${fmt(g.value)}</b></button>${inner}`;
   }).join('');
-  setHTML(box, `<div class="dn"><div class="dnsvg"><svg viewBox="0 0 200 200" role="img" aria-label="New tokens by model">${rings}</svg><div class="dnmid"><b>${fmt(total)}</b><span>new tokens</span></div></div><div class="dnl">${list}</div></div>`);
-  setHTML($('llmfor'), '· each slice is one model. The smaller models are grouped as Other. Click any row to see more.');
+  setHTML(box, `<div class="dn"><div class="dnsvg"><svg viewBox="0 0 200 200" role="img" aria-label="New tokens by AI">${rings}</svg><div class="dnmid"><b>${fmt(total)}</b><span>new tokens</span></div></div><div class="dnl">${list}</div></div>`);
+  setHTML($('llmfor'), '· click Claude or Codex to see the models it used.');
 }
 
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
@@ -698,7 +707,7 @@ $('detail').addEventListener('click', (e) => {
   if (e.target.closest('[data-x]') || open) act = null;
   if (open) { openProduct(open.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } else if (!act) render();
 });
-$('models').addEventListener('click', (e) => { const b = e.target.closest('.dnr, .dnsvg circle'); if (b) { openModel = openModel === b.dataset.m ? null : b.dataset.m; llmGraph(); } });
+$('models').addEventListener('click', (e) => { const b = e.target.closest('.ag, .dnr, .dnsvg circle'); if (b) { openModel = openModel === b.dataset.m ? null : b.dataset.m; llmGraph(); } });
 const trendEl = $('trend');
 trendEl.addEventListener('mousemove', (e) => { const r = trendEl.getBoundingClientRect(); trendHover = Math.max(0, Math.min(dates.length - 1, Math.round((e.clientX - r.left - 48) / (r.width - 56) * (dates.length - 1)))); if (still) drawTrend(0); });
 trendEl.addEventListener('mouseleave', () => { trendHover = -1; });
