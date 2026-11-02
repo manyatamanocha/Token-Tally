@@ -107,13 +107,6 @@ h2{font-weight:700}
 .lab .t{min-width:0;overflow-wrap:anywhere}
 .mleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mut);margin-bottom:12px}
 .mleg i,.vparts i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
-.dn{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:28px;align-items:center}
-.dnsvg{position:relative;width:100%;max-width:300px;margin:0 auto}
-.dnsvg svg{display:block;width:100%;height:auto;transform:rotate(-90deg)}
-.dnsvg circle{fill:none;stroke-width:34;cursor:pointer;transition:opacity .15s}
-.dnsvg circle.dim{opacity:.35}
-.dnmid{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
-.dnmid b{font:600 26px var(--mono)}.dnmid span{font-size:12.5px;color:var(--mut)}
 .dnl{min-width:0}
 .dng{margin:12px 0 2px;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;font-size:13.5px;color:var(--mut)}
 .dng:first-child{margin-top:0}.dng strong{font-size:16px;color:var(--c)}.dng b{font:600 14px var(--mono);color:var(--ink)}
@@ -125,13 +118,17 @@ h2{font-weight:700}
 .dnmore{display:grid;grid-template-columns:minmax(0,1fr) 74px 54px;gap:3px 10px;margin:2px 6px 6px 28px;font:12.5px var(--mono);color:var(--soft)}
 .dnmore b{text-align:right;color:var(--ink)}.dnmore em{font-style:normal;text-align:right;color:var(--mut)}
 .dnr+.dnmore+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
+.sbt{margin:0 0 8px;color:var(--mut);font-size:14px}.sbt b{font:600 20px var(--mono);color:var(--ink)}
+.sb{display:flex;gap:3px;height:36px;margin-bottom:14px}
+.sbs{all:unset;box-sizing:border-box;min-width:6px;display:grid;place-items:center;overflow:hidden;white-space:nowrap;padding:0 10px;color:var(--on);font:600 14px var(--sans);cursor:pointer;transition:opacity .15s,filter .15s}
+.sbs:first-child{border-radius:10px 4px 4px 10px}.sbs:last-child{border-radius:4px 10px 10px 4px}.sbs:only-child{border-radius:10px}
+.sbs:hover{filter:brightness(1.1)}.sbs.dim{opacity:.35}.sbs:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .ag{all:unset;box-sizing:border-box;display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:12px 10px;border-radius:10px;cursor:pointer;font-size:15px}
 .ag i{width:14px;height:14px;border-radius:5px;background:var(--c)}.ag strong{color:var(--c);font-size:17px}
 .ag b{font:600 18px var(--mono)}.ag:hover,.ag.sel{background:var(--hover)}.ag:focus-visible{outline:2px solid var(--acc)}
 .agin{margin:0 0 10px 26px;padding-left:12px;border-left:1px solid var(--line)}
 .agh{margin:4px 6px 4px;font-size:12.5px;color:var(--mut)}
 .dnr+.vparts{margin:2px 6px 6px 28px;font-size:13px;color:var(--soft)}
-@media(max-width:760px){.dn{grid-template-columns:minmax(0,1fr)}}
 .vparts{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px}
 .vparts b{font:600 13px var(--mono);color:var(--ink)}
 .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -428,14 +425,10 @@ function llmGraph() {
     return { x, rows, value: rows.reduce((a, r) => a + r.value, 0), parts: [...merged.values()].sort((a, b) => b.value - a.value) };
   }).filter((g) => g.rows.length).sort((a, b) => b.value - a.value);
   const inGroup = (g) => openModel === g.x || (openModel ?? '').startsWith(`${g.x}:`);
-  const R = 78, C = 2 * Math.PI * R;
-  let at = 0;
-  const rings = groups.map((g) => {
-    const len = g.value / total * C;
+  const bar = groups.map((g) => {
     const dim = openModel && !inGroup(g);
-    const c = `<circle class="${dim ? 'dim' : ''}" data-m="${g.x}" cx="100" cy="100" r="${R}" stroke="${COL[g.x]}" stroke-dasharray="${Math.max(len - 2, 0.6)} ${C}" stroke-dashoffset="${-at}"><title>${NAME[g.x]}: ${fmt(g.value)} new tokens</title></circle>`;
-    at += len;
-    return c;
+    const share = g.value / total * 100;
+    return `<button class="sbs${dim ? ' dim' : ''}" data-m="${g.x}" style="flex:${g.value} 0 0;background:${COL[g.x]}" title="${NAME[g.x]}: ${fmt(g.value)} new tokens" aria-label="${NAME[g.x]}, ${share.toFixed(1)}%">${share >= 6 ? `${NAME[g.x]} ${share.toFixed(1)}%` : ''}</button>`;
   }).join('');
   const chips = (parts) => `<div class="vparts">${parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>`;
   const scope = pick ? 'of this product\'s new tokens' : 'of all new tokens';
@@ -453,7 +446,7 @@ function llmGraph() {
     }
     return `<button class="ag${open ? ' sel' : ''}" data-m="${g.x}" style="--c:${COL[g.x]}" aria-expanded="${open}"><i></i><span><strong>${NAME[g.x]}</strong> did ${(g.value / total * 100).toFixed(1)}% ${scope}</span><b>${fmt(g.value)}</b></button>${inner}`;
   }).join('');
-  setHTML(box, `<div class="dn"><div class="dnsvg"><svg viewBox="0 0 200 200" role="img" aria-label="New tokens by AI">${rings}</svg><div class="dnmid"><b>${fmt(total)}</b><span>new tokens</span></div></div><div class="dnl">${list}</div></div>`);
+  setHTML(box, `<p class="sbt"><b>${fmt(total)}</b> new tokens in total</p><div class="sb" role="img" aria-label="Share of new tokens by AI">${bar}</div><div class="dnl">${list}</div>`);
   setHTML($('llmfor'), '· click Claude or Codex to see the models it used.');
 }
 
@@ -707,7 +700,7 @@ $('detail').addEventListener('click', (e) => {
   if (e.target.closest('[data-x]') || open) act = null;
   if (open) { openProduct(open.dataset.id); scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); } else if (!act) render();
 });
-$('models').addEventListener('click', (e) => { const b = e.target.closest('.ag, .dnr, .dnsvg circle'); if (b) { openModel = openModel === b.dataset.m ? null : b.dataset.m; llmGraph(); } });
+$('models').addEventListener('click', (e) => { const b = e.target.closest('.ag, .dnr, .sbs'); if (b) { openModel = openModel === b.dataset.m ? null : b.dataset.m; llmGraph(); } });
 const trendEl = $('trend');
 trendEl.addEventListener('mousemove', (e) => { const r = trendEl.getBoundingClientRect(); trendHover = Math.max(0, Math.min(dates.length - 1, Math.round((e.clientX - r.left - 48) / (r.width - 56) * (dates.length - 1)))); if (still) drawTrend(0); });
 trendEl.addEventListener('mouseleave', () => { trendHover = -1; });
