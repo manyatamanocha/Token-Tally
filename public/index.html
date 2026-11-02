@@ -147,23 +147,30 @@ h2{font-weight:700}
 @media(prefers-reduced-motion:reduce){.dl-bar i{animation:none}}
 .dl-more{padding:2px 18px 14px}
 .dl-note{margin:0 0 8px;text-align:center;font-size:12.5px;color:var(--mut)}
-.sv-top{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:center;margin:6px 0 10px}
-.sv-top>div{text-align:center}
-.sv-top span,.sv-top small{display:block;color:var(--mut);font-size:13px}
-.sv-top b{display:block;font-size:24px;font-weight:600;color:var(--hi);line-height:1.2}
-.sv-top ul,.sv-tips{margin:0;padding-left:18px;font-size:14px;color:var(--soft);display:grid;gap:4px}
-.sv-top ul b{display:inline;font-size:14px;color:var(--ink)}
-.sv-top>.sv-g{text-align:left}
-.sv-g .sv-h{margin:6px 0 2px}
-.sv-g ul{padding-left:18px}
+.sv-sum{text-align:center;margin:6px 0 10px}
+.sv-sum span,.sv-sum small{display:block;color:var(--mut);font-size:13px}
+.sv-sum b{display:block;font-size:24px;font-weight:600;color:var(--hi);line-height:1.2}
+.bub-h{margin:6px 0 10px;text-align:center;font-size:15px;font-weight:600;color:var(--ink)}
+.bubs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:8px}
+.bub{position:relative;display:grid;gap:3px;align-content:start;padding:12px 15px;border-radius:20px;background:var(--bg);box-shadow:var(--shadow);font-size:13.5px;color:var(--soft)}
+.bub::after{content:"";position:absolute;left:26px;bottom:-8px;width:16px;height:16px;background:inherit;transform:rotate(45deg);border-radius:0 0 4px 0}
+.bub b{font-size:14.5px;font-weight:600;color:var(--ink)}
+.bub u{text-decoration:none;font-size:11.5px;font-weight:600;color:var(--mut)}
+.bub.hot{background:var(--acc);color:var(--on)}
+.bub.hot b,.bub.hot u{color:var(--on)}
+.bub.hot u{opacity:.85}
+.bubs .bub{animation:pop .35s ease-out backwards}
+.bubs .bub:nth-child(2){animation-delay:.06s}.bubs .bub:nth-child(3){animation-delay:.12s}.bubs .bub:nth-child(4){animation-delay:.18s}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+@media(prefers-reduced-motion:reduce){.bubs .bub{animation:none}}
 .sv-h{margin:12px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
 .sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 110px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
 .sv-row:hover{background:var(--hover)}
 .sv-row:focus-visible{outline:2px solid var(--acc)}
 .sv-row b{text-align:right;font:600 13.5px var(--mono);color:var(--hi)}
 .sv-row span:nth-child(4){text-align:right;font:13px var(--mono);color:var(--mut)}
-.sv-tips{padding:2px 8px 8px 28px}
-@media(max-width:700px){.sv-top{grid-template-columns:minmax(0,1fr)}.sv-row{grid-template-columns:60px minmax(0,1fr) 92px}.sv-row span:nth-child(3),.sv-row span:nth-child(4){display:none}}
+.sv-tips{display:grid;gap:14px;padding:6px 8px 16px}
+@media(max-width:700px){.sv-row{grid-template-columns:60px minmax(0,1fr) 92px}.sv-row span:nth-child(3),.sv-row span:nth-child(4){display:none}}
 .top h1{font:900 43px/1 var(--sans);text-transform:uppercase;letter-spacing:.03em;color:color-mix(in srgb,var(--acc) 30%,var(--card));-webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:0 2px 0 color-mix(in srgb,var(--ink) 18%,transparent)}
 .card,.cards,.tile{border:0;border-radius:20px;box-shadow:var(--shadow);background:var(--card)}
 .tile{background:var(--card)}
@@ -453,8 +460,8 @@ function llmGraph() {
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
 function saveRow(r, label) {
   const open = openSave === r.at;
-  const tips = r.tips.length ? r.tips.map((x) => `<li>${esc(x.text)}</li>`).join('') : '<li>This session looked efficient.</li>';
-  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Save ${fmt(r.saved)}` : 'Good'}</b></button>${open ? `<ul class="sv-tips">${tips}</ul>` : ''}`;
+  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>This session looked efficient.</span></div>';
+  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Save ${fmt(r.saved)}` : 'Good'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
 }
 function saveTokens() {
   const v = viewOf(k);
@@ -464,14 +471,10 @@ function saveTokens() {
   el.hidden = false;
   const share = a.rereadTokens ? a.saved / a.rereadTokens * 100 : 0;
   const tested = a.longChats
-    ? `<li><b>Start a new chat more often.</b> ${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</li>`
-    : `<li><b>Your chats are a good length.</b> None went past ${a.longChatSteps} steps.</li>`;
-  const ideas = [
-    a.repeatedFiles ? `<li>Keep short notes for files you return to. ${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions.</li>` : '',
-    '<li>Put several requests in one message.</li>',
-    '<li>Use a smaller model for small jobs.</li>',
-  ].join('');
-  const general = `<div class="sv-g"><h3 class="sv-h">Tested on your logs</h3><ul>${tested}</ul><h3 class="sv-h">Ideas to try, not tested</h3><ul>${ideas}</ul></div>`;
+    ? `<div class="bub hot"><b>🚀 Start a new chat more often</b><span>${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</span><u>Tested on your logs</u></div>`
+    : `<div class="bub hot"><b>🎉 Your chats are a good length</b><span>None went past ${a.longChatSteps} steps.</span><u>Tested on your logs</u></div>`;
+  const idea = (title, text) => `<div class="bub"><b>${title}</b><span>${text}</span><u>Idea to try</u></div>`;
+  const general = `<div class="bubs">${tested}${a.repeatedFiles ? idea('📝 Keep short notes', `${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions.`) : ''}${idea('✉️ Group your requests', 'Put several requests in one message.')}${idea('🪶 Use a smaller model', 'Keep the largest model for hard work.')}</div>`;
   const worst = a.worst.filter((r) => r.at !== a.latest.at);
   const tip = a.latest.tips.find((x) => x.save);
   const short = tip?.save
@@ -479,7 +482,8 @@ function saveTokens() {
     : 'Last session looked efficient. Nice work!';
   const more = saveOpen ? `<div class="dl-more">
 <p class="dl-note">The saving comes from replaying your long chats with a new chat every ${a.longChatSteps} steps. It is an estimate, and it counts tokens, not money. Token Tally cannot read your chats, so it cannot know if a task needed the extra steps.</p>
-<div class="sv-top"><div><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div>${general}</div>
+<div class="sv-sum"><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div>
+<h3 class="bub-h">Tips to improve</h3>${general}
 <h3 class="sv-h">Last session</h3>${saveRow(a.latest)}
 ${worst.length ? `<h3 class="sv-h">Biggest chances to save</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>` : '';
   setHTML(el, `<button class="dl-bar" aria-expanded="${saveOpen}"><i>💡</i><span>${esc(short)}</span><b>${saveOpen ? 'Hide tips' : 'See tips'}</b></button>${more}`);
