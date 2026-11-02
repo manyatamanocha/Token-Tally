@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { ensureConnected, removeHook } from '../src/hook.js';
 import { ingest } from '../src/ingest.js';
-import { loadRecord, saveRecord } from '../src/record.js';
+import { loadRecord, moveOldState, saveRecord } from '../src/record.js';
 import { startServer } from '../src/server.js';
 
 const home = homedir();
@@ -15,7 +15,8 @@ const claudeDir = process.env.CLAUDE_CONFIG_DIR || join(home, '.claude');
 const projectsDir = join(claudeDir, 'projects');
 const codexDir = join(process.env.CODEX_HOME || join(home, '.codex'), 'sessions');
 const settingsPath = join(claudeDir, 'settings.json');
-const stateDir = join(home, '.ship-tally');
+const stateDir = join(home, '.token-tally');
+moveOldState(join(home, '.ship-tally'), stateDir);
 const recordPath = join(stateDir, 'record.json');
 const appDir = fileURLToPath(new URL('..', import.meta.url));
 

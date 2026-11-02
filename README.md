@@ -9,12 +9,16 @@ Everything runs on your own computer. The tool has no accounts, and it sends not
 You need Node.js 20 or later.
 
 ```
-npx github:manyatamanocha/Ship-Tally
+npx github:manyatamanocha/Token-Tally
 ```
 
 The first run asks if the tool can connect to Claude Code. A yes adds one `SessionEnd` hook to your Claude Code settings and makes a backup of that file. Numbers then save when the dashboard is closed. A no is also fine: the dashboard works, but it can miss logs that Claude Code deletes while the dashboard is closed.
 
 Use the same command to open the dashboard later. Keep the terminal window open for live numbers.
+
+## Save tokens
+
+The Save tokens section looks at each session and gives advice, such as starting a new chat sooner. Savings are estimates from numbers only. The tool cannot read your chats, so it cannot know if a task needed the extra steps. It assumes that a chat split at 300 steps keeps about 300/N of its re-read tokens.
 
 ## What each number means
 
@@ -44,12 +48,12 @@ You can rename a product, join two products, hide a product, and assign a sessio
 
 ## What it stores
 
-The tool stores numbers, dates, model names, request IDs, session IDs and product folder paths in `~/.ship-tally/record.json`. It never stores chat text.
+The tool stores numbers, dates, model names, request IDs, session IDs and product folder paths in `~/.token-tally/record.json`. It never stores chat text.
 
 ## Remove it
 
 ```
-npx github:manyatamanocha/Ship-Tally uninstall
+npx github:manyatamanocha/Token-Tally uninstall
 ```
 
-This removes the hook. Delete `~/.ship-tally` to remove your numbers too.
+This removes the hook. Delete `~/.token-tally` to remove your numbers too.

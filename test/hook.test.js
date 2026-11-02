@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addHook, removeHook, ensureConnected } from '../src/hook.js';
 
-const CMD = '"/new/node" "/h/.ship-tally/app/bin/ship-tally.js" sync --quiet';
-const OLD = '"/old/node" "/h/.ship-tally/app/bin/ship-tally.js" sync --quiet';
-const BIN = fileURLToPath(new URL('../bin/ship-tally.js', import.meta.url));
+const CMD = '"/new/node" "/h/.token-tally/app/bin/token-tally.js" sync --quiet';
+const OLD = '"/old/node" "/h/.token-tally/app/bin/token-tally.js" sync --quiet';
+const BIN = fileURLToPath(new URL('../bin/token-tally.js', import.meta.url));
 const APP = fileURLToPath(new URL('..', import.meta.url));
 let dir, settings;
 const read = () => JSON.parse(readFileSync(settings, 'utf8'));
@@ -76,7 +76,7 @@ test('remove keeps another hook in the same group', () => {
   assert.deepEqual(read().hooks.SessionEnd, [{ hooks: [other] }]);
 });
 test('a later run repairs a stale Node path', async () => {
-  const stateDir = join(dir, '.ship-tally');
+  const stateDir = join(dir, '.token-tally');
   await ensureConnected({ stateDir, settingsPath: settings, appDir: APP, nodePath: '/old/node', ask: async () => true });
   await ensureConnected({ stateDir, settingsPath: settings, appDir: APP, nodePath: '/new/node', ask: null });
   assert.match(read().hooks.SessionEnd[0].hooks[0].command, /^"\/new\/node"/);
@@ -84,13 +84,13 @@ test('a later run repairs a stale Node path', async () => {
 test('uninstall removes the hook and the saved choice', () => {
   const home = join(dir, 'home3');
   mkdirSync(join(home, '.claude'), { recursive: true });
-  mkdirSync(join(home, '.ship-tally'));
-  writeFileSync(join(home, '.ship-tally', 'settings.json'), '{"connected":true}');
+  mkdirSync(join(home, '.token-tally'));
+  writeFileSync(join(home, '.token-tally', 'settings.json'), '{"connected":true}');
   addHook(join(home, '.claude', 'settings.json'), OLD);
   const run = spawnSync(process.execPath, [BIN, 'uninstall'], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '' }, encoding: 'utf8' });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /Disconnected/);
-  assert.equal(existsSync(join(home, '.ship-tally', 'settings.json')), false);
+  assert.equal(existsSync(join(home, '.token-tally', 'settings.json')), false);
 });
 test('uninstall with invalid settings prints a clear message', () => {
   const home = join(dir, 'home4');
@@ -136,7 +136,7 @@ test('sync --quiet prints nothing and exits 0', () => {
 test('sync --quiet exits 0 when the state folder cannot be used', () => {
   const home = join(dir, 'home2');
   mkdirSync(home);
-  writeFileSync(join(home, '.ship-tally'), 'a file, not a folder');
+  writeFileSync(join(home, '.token-tally'), 'a file, not a folder');
   mkdirSync(join(home, '.claude', 'projects', 'p'), { recursive: true });
   writeFileSync(join(home, '.claude', 'projects', 'p', 's.jsonl'), '{}\n');
   const run = spawnSync(process.execPath, [BIN, 'sync', '--quiet'], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '' }, encoding: 'utf8' });

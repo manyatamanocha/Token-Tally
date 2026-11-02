@@ -1,4 +1,5 @@
 import { basename } from 'node:path';
+import { buildAdvice } from './advice.js';
 import { emptyPath, localDate, PATH_FIELDS } from './parse.js';
 
 export const UNSORTED = '__unsorted__';
@@ -176,6 +177,11 @@ export function buildDashboard(record, now, llm = null) {
     current = all.find((p) => p.id === id && !isHidden(p)) ?? null;
   }
 
+  const describe = (s) => {
+    const productId = topProduct(s, overrides);
+    return { productId, product: nameOf(productId), llm: s.llm ?? 'claude', date: localDate(s.lastAt) };
+  };
+
   return {
     generatedAt: now,
     current,
@@ -190,6 +196,10 @@ export function buildDashboard(record, now, llm = null) {
     })),
     sessionCount: sessions.length,
     totals: toStats('all', 'All products', everything),
+    advice: {
+      ...buildAdvice(sessions, describe),
+      byProduct: Object.fromEntries([...new Set(sessions.map((s) => topProduct(s, overrides)))].map((id) => [id, buildAdvice(sessions.filter((s) => topProduct(s, overrides) === id), describe)])),
+    },
     tape: sessions.filter((s) => Object.values(s.byDay).some((d) => d.newTokens > 0)).sort((a, b) => b.lastAt - a.lastAt).slice(0, TAPE_SIZE).map((s) => tapeRow(s, overrides, nameOf)),
   };
 }

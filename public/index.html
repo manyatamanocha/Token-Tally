@@ -131,6 +131,31 @@ h2{font-weight:700}
 .acts button:hover,#changes button:hover{background:var(--hover);cursor:pointer}
 #changes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mut);font-size:13px}
 #changes:empty,#notes:empty,#back:empty{display:none}
+#save[hidden]{display:none}
+.dl{border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
+.dl-bar{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:16px;cursor:pointer;font-size:14.5px}
+.dl-bar:hover{box-shadow:var(--press)}
+.dl-bar:focus-visible{outline:2px solid var(--acc)}
+.dl-bar i{font-style:normal;font-size:18px;animation:glow 2.4s ease-in-out infinite}
+.dl-bar b{font-size:13px;font-weight:600;color:var(--acc);white-space:nowrap}
+@keyframes glow{50%{transform:scale(1.18) rotate(-6deg);filter:drop-shadow(0 0 6px var(--acc))}}
+@media(prefers-reduced-motion:reduce){.dl-bar i{animation:none}}
+.dl-more{padding:2px 18px 14px}
+.dl-note{margin:0 0 8px;text-align:center;font-size:12.5px;color:var(--mut)}
+.sv-top{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:center;margin:6px 0 10px}
+.sv-top>div{text-align:center}
+.sv-top span,.sv-top small{display:block;color:var(--mut);font-size:13px}
+.sv-top b{display:block;font-size:24px;font-weight:600;color:var(--hi);line-height:1.2}
+.sv-top ul,.sv-tips{margin:0;padding-left:18px;font-size:14px;color:var(--soft);display:grid;gap:4px}
+.sv-top ul b{display:inline;font-size:14px;color:var(--ink)}
+.sv-h{margin:12px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
+.sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 110px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
+.sv-row:hover{background:var(--hover)}
+.sv-row:focus-visible{outline:2px solid var(--acc)}
+.sv-row b{text-align:right;font:600 13.5px var(--mono);color:var(--hi)}
+.sv-row span:nth-child(4){text-align:right;font:13px var(--mono);color:var(--mut)}
+.sv-tips{padding:2px 8px 8px 28px}
+@media(max-width:700px){.sv-top{grid-template-columns:minmax(0,1fr)}.sv-row{grid-template-columns:60px minmax(0,1fr) 92px}.sv-row span:nth-child(3),.sv-row span:nth-child(4){display:none}}
 .top h1{font:900 43px/1 var(--sans);text-transform:uppercase;letter-spacing:.03em;color:color-mix(in srgb,var(--acc) 30%,var(--card));-webkit-text-stroke:2.5px var(--ink);paint-order:stroke fill;text-shadow:0 2px 0 color-mix(in srgb,var(--ink) 18%,transparent)}
 .card,.cards,.tile{border:0;border-radius:20px;box-shadow:var(--shadow);background:var(--card)}
 .tile{background:var(--card)}
@@ -169,6 +194,7 @@ main{grid-template-columns:minmax(0,1fr)}
     <div id="notes"></div>
     <div id="back"></div>
     <section class="cards" id="cards"></section>
+    <section class="dl" id="save"></section>
     <section class="card"><div class="ringmap" id="map"><canvas id="ring" aria-hidden="true"></canvas><div id="mapin"></div></div></section>
     <section class="card" id="detail" hidden></section>
     <section class="card" id="manage" hidden></section>
@@ -191,7 +217,7 @@ const NAME = { claude: 'Claude', codex: 'Codex' };
 const EMPTY = { id: '', name: '', newTokens: 0, rereadTokens: 0, requests: 0, agents: 0, subagents: 0, days: 0, hours: 0, files: 0, path: {}, pathMissing: 0, perDay: [], perModel: [], topSessions: [], lastAt: 0 };
 const $ = (id) => document.getElementById(id);
 
-let data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
+let saveOpen = false, openSave = null, data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
 let colors = new Map(), dates = [], trendS = [], trendHover = -1;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -408,6 +434,38 @@ function llmGraph() {
   setHTML($('llmfor'), '· each slice is one model. Click a model to see which products it worked on.');
 }
 
+/* Advice on saving tokens. Every saving is an estimate from numbers only. */
+function saveRow(r, label) {
+  const open = openSave === r.at;
+  const tips = r.tips.length ? r.tips.map((t) => `<li>${esc(t.text)}</li>`).join('') : '<li>This session looked efficient.</li>';
+  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Save ${fmt(r.saved)}` : 'Good'}</b></button>${open ? `<ul class="sv-tips">${tips}</ul>` : ''}`;
+}
+function saveTokens() {
+  const v = viewOf(k);
+  const a = pick ? v.advice.byProduct[pick] : v.advice;
+  const el = $('save');
+  if (!a || !a.latest) { el.hidden = true; return; }
+  el.hidden = false;
+  const share = a.rereadTokens ? a.saved / a.rereadTokens * 100 : 0;
+  const general = [
+    a.longChats ? `<li><b>Start a new chat more often.</b> ${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</li>` : `<li><b>Your chats are a good length.</b> None went past ${a.longChatSteps} steps.</li>`,
+    a.repeatedFiles ? `<li><b>Keep short notes for files you return to.</b> ${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions, so agents read them again each time.</li>` : '',
+    '<li><b>Put several requests in one message.</b> Each message makes the LLM read the chat again.</li>',
+    '<li><b>Use a smaller model for small jobs.</b> Keep the largest model for hard work.</li>',
+  ].join('');
+  const worst = a.worst.filter((r) => r.at !== a.latest.at);
+  const tip = a.latest.tips[0];
+  const short = tip?.save
+    ? `Last session: about ${fmt(tip.save)} tokens could have been saved.`
+    : tip ? 'Last session: one small change could help next time.' : 'Last session looked efficient. Nice work!';
+  const more = saveOpen ? `<div class="dl-more">
+<p class="dl-note">These are estimates from your numbers. Token Tally cannot read your chats, so it cannot know if a task needed the extra steps.</p>
+<div class="sv-top"><div><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div><ul>${general}</ul></div>
+<h3 class="sv-h">Last session</h3>${saveRow(a.latest)}
+${worst.length ? `<h3 class="sv-h">Biggest chances to save</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>` : '';
+  setHTML(el, `<button class="dl-bar" aria-expanded="${saveOpen}"><i>💡</i><span>${esc(short)}</span><b>${saveOpen ? 'Hide tips' : 'See tips'}</b></button>${more}`);
+}
+
 /* Rename, Join, Hide, Assign and Undo. */
 function manage(s) {
   const el = $('manage');
@@ -482,6 +540,7 @@ function render() {
   detailPanel(s);
   panels(s);
   llmGraph();
+  saveTokens();
   manage(s);
   changes();
   notes(s);
@@ -616,6 +675,7 @@ mapEl.addEventListener('click', (e) => pressBox(e.target));
 mapEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.lab[role=button]')) { e.preventDefault(); pressBox(e.target); } });
 mapEl.addEventListener('mouseover', (e) => { const l = e.target.closest('.lab[data-seg]'); hover = l ? +l.dataset.seg : -1; if (still) draw(0); });
 mapEl.addEventListener('mouseleave', () => { hover = -1; if (still) draw(0); });
+$('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar')) { saveOpen = !saveOpen; saveTokens(); return; } const r = e.target.closest('.sv-row'); if (r) { const at = +r.dataset.at; openSave = openSave === at ? null : at; saveTokens(); } });
 $('detail').addEventListener('click', (e) => {
   const open = e.target.closest('.orow');
   if (e.target.closest('[data-x]') || open) act = null;

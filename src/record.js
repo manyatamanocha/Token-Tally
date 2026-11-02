@@ -1,4 +1,4 @@
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
+import { closeSync, cpSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const VERSION = 2;
@@ -17,6 +17,13 @@ export function newRecord() {
 function upgradeFromV1(old) {
   const sessions = Object.fromEntries(Object.entries(old.sessions).map(([id, s]) => [id, { ...s, llm: 'claude' }]));
   return { ...newRecord(), ...old, version: VERSION, sessions, seen: {} };
+}
+
+// The tool was called Ship Tally. Copy its folder once, and keep the old one as a backup.
+export function moveOldState(oldDir, newDir) {
+  if (existsSync(newDir) || !existsSync(oldDir)) return false;
+  cpSync(oldDir, newDir, { recursive: true });
+  return true;
 }
 
 export function loadRecord(path) {

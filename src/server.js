@@ -82,7 +82,7 @@ function isOurServer(port) {
     const req = http.get({ host: HOST, port, path: '/api/ping', timeout: 1000 }, (res) => {
       let text = '';
       res.on('data', (c) => { text += c; });
-      res.on('end', () => resolve(text.includes('"ship-tally"')));
+      res.on('end', () => resolve(text.includes('"token-tally"')));
     });
     req.on('error', () => resolve(false));
     req.on('timeout', () => { req.destroy(); resolve(false); });
@@ -107,7 +107,7 @@ export async function startServer({ recordPath, projectsDir, codexDir, home, por
     if (!allowedHost(req.headers.host) || !allowedOrigin(req.headers.origin)) return send(res, 403, { error: 'forbidden' });
     const path = req.url.split('?')[0];
     if (req.method === 'GET' && path === '/') return send(res, 200, readFileSync(PAGE_PATH, 'utf8'), 'text/html; charset=utf-8');
-    if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'ship-tally' });
+    if (req.method === 'GET' && path === '/api/ping') return send(res, 200, { app: 'token-tally' });
     if (req.method === 'GET' && path === '/api/data') {
       const now = Date.now();
       const views = { claude: buildDashboard(record, now, 'claude'), codex: buildDashboard(record, now, 'codex') };

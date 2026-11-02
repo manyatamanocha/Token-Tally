@@ -26,7 +26,7 @@ test('a folder with a dot in its name is a root', () => {
   assert.equal(findRoot('/h/code/my.app', { ...opts, folder: true }), '/h/code/my.app');
 });
 test('dotfiles and dot folders are not products', () => {
-  for (const p of ['/h/.zshrc', '/h/.ssh/config', '/h/.config/app/x.json', '/h/.ship-tally/record.json']) {
+  for (const p of ['/h/.zshrc', '/h/.ssh/config', '/h/.config/app/x.json', '/h/.token-tally/record.json']) {
     assert.equal(findRoot(p, opts), null);
   }
 });

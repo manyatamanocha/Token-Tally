@@ -4,11 +4,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as zlib from 'node:zlib';
+import { buildAdvice, sessionAdvice } from '../src/advice.js';
 import { buildDashboard } from '../src/aggregate.js';
 import { parseCodexSession } from '../src/codex.js';
 import { ingest } from '../src/ingest.js';
 import { parseSession } from '../src/parse.js';
-import { loadRecord, newRecord, saveRecord } from '../src/record.js';
+import { loadRecord, moveOldState, newRecord, saveRecord } from '../src/record.js';
 
 let dir, projectsDir, codexDir, home, recordPath;
 const T = '2026-10-01T10:00:00.000Z';
@@ -154,4 +155,51 @@ test('a version 1 record upgrades, keeps totals and reads logs again', async () 
   assert.equal(d.totals.newTokens, 500);
   assert.equal(d.totals.pathMissing, 1);
   assert.equal(JSON.parse(readFileSync(recordPath, 'utf8')).version, 1);
+});
+
+const facts = (steps, reread, path = {}, model = 'gpt-x', extra = {}) => ({
+  byDay: { '2026-10-01': { requests: steps, newTokens: steps * 5000, rereadTokens: reread } },
+  byModel: { [model]: { newTokens: steps * 5000 } }, path, lastAt: 1, ...extra,
+});
+
+test('a long chat gets a saving estimate', () => {
+  const a = sessionAdvice(facts(600, 1200000));
+  assert.equal(a.saved, 600000);
+  assert.match(a.tips[0].text, /could have saved about 600\.0K tokens/);
+});
+
+test('a short chat gets no saving and no tip', () => {
+  const a = sessionAdvice(facts(100, 1000000, { messages: 5, actions: 100 }));
+  assert.equal(a.saved, 0);
+  assert.deepEqual(a.tips, []);
+});
+
+test('many short messages, many stops and a large model each get a tip', () => {
+  const small = facts(120, 1000, { messages: 80, actions: 100, stops: 4 }, 'claude-opus-x');
+  small.byDay['2026-10-01'].newTokens = 12000;
+  small.byModel['claude-opus-x'].newTokens = 12000;
+  assert.deepEqual(sessionAdvice(small).tips.map((t) => t.kind), ['short-messages', 'large-model', 'stops']);
+});
+
+test('advice lists the latest session and the biggest savings', () => {
+  const a = buildAdvice([facts(600, 1200000, {}, 'm', { lastAt: 1 }), facts(10, 100, {}, 'm', { lastAt: 9 })], () => ({ product: 'p' }));
+  assert.equal(a.latest.at, 9);
+  assert.equal(a.worst.length, 1);
+  assert.equal(a.longChats, 1);
+  assert.equal(a.longChatShare > 0.99, true);
+});
+
+test('files changed in five sessions are counted', () => {
+  const list = [1, 2, 3, 4, 5].map((n) => facts(10, 10, {}, 'm', { lastAt: n, fileKeys: { '/p': ['same'] } }));
+  assert.equal(buildAdvice(list, () => ({})).repeatedFiles, 1);
+});
+
+test('the old folder is copied once and kept', () => {
+  const [from, to] = [join(dir, 'old'), join(dir, 'new')];
+  mkdirSync(from);
+  writeFileSync(join(from, 'record.json'), '{}');
+  assert.equal(moveOldState(from, to), true);
+  assert.equal(readFileSync(join(to, 'record.json'), 'utf8'), '{}');
+  assert.equal(readFileSync(join(from, 'record.json'), 'utf8'), '{}');
+  assert.equal(moveOldState(from, to), false);
 });

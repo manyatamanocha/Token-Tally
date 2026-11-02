@@ -13,7 +13,7 @@ function readSettings(path) {
 function writeWithBackup(path, settings) {
   let backupPath = null;
   if (existsSync(path)) {
-    backupPath = `${path}.ship-tally-backup`;
+    backupPath = `${path}.token-tally-backup`;
     copyFileSync(path, backupPath);
   }
   mkdirSync(dirname(path), { recursive: true });
@@ -21,7 +21,7 @@ function writeWithBackup(path, settings) {
   return backupPath;
 }
 
-const OUR_COMMAND = /\.ship-tally[\\/]app[\\/]bin[\\/]ship-tally\.js"?\s+sync/;
+const OUR_COMMAND = /\.(ship|token)-tally[\\/]app[\\/]bin[\\/](ship|token)-tally\.js"?\s+sync/; // Old installs used ship-tally.
 
 function withoutOurs(groups) {
   return groups
@@ -53,7 +53,7 @@ export function removeHook(settingsPath) {
 }
 
 export function hookCommand(stateDir, nodePath) {
-  return `"${nodePath}" "${join(stateDir, 'app', 'bin', 'ship-tally.js')}" sync --quiet`;
+  return `"${nodePath}" "${join(stateDir, 'app', 'bin', 'token-tally.js')}" sync --quiet`;
 }
 
 export function copyApp(appDir, stateDir) {
