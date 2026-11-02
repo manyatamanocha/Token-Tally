@@ -44,19 +44,19 @@ export function sessionAdvice(facts) {
   if (steps > LONG_CHAT_STEPS) {
     const save = replaySaving(facts);
     saved += save;
-    if (save > 0) tips.push({ kind: 'long-chat', tested: true, save, text: `This chat ran ${steps} steps and re-read about ${compact(rereadTokens / steps)} tokens on each step. A replay with a new chat every ${LONG_CHAT_STEPS} steps saved about ${compact(save)} tokens.` });
+    if (save > 0) tips.push({ kind: 'long-chat', tested: true, save, text: `This chat got very long, with ${steps} steps. The AI reread about ${compact(rereadTokens / steps)} tokens of old chat at every step. Starting a fresh chat every ${LONG_CHAT_STEPS} steps could have saved about ${compact(save)} tokens.` });
   }
   const messages = path.messages ?? 0;
   const actions = path.actions ?? 0;
   if (messages >= MANY_MESSAGES && actions / messages < FEW_STEPS_PER_MESSAGE) {
-    tips.push({ kind: 'short-messages', tested: false, save: 0, text: `Idea: you sent ${messages} messages, and agents took few steps for each one. Try putting several requests into one message.` });
+    tips.push({ kind: 'short-messages', tested: false, save: 0, text: `Try this: you sent ${messages} short messages. Put related requests together in one message.` });
   }
   const [model] = Object.entries(facts.byModel).sort((a, b) => b[1].newTokens - a[1].newTokens)[0] ?? [];
   if (model && LARGE_MODEL.test(model) && steps >= 100 && newTokens / steps < SMALL_STEP_TOKENS) {
-    tips.push({ kind: 'large-model', tested: false, save: 0, text: `Idea: most steps were small, but they used ${model}, a large model. Try a smaller model for small steps.` });
+    tips.push({ kind: 'large-model', tested: false, save: 0, text: `Try this: most of the work was small, but it used ${model}, a big model. A smaller model can do small jobs.` });
   }
   if ((path.stops ?? 0) >= MANY_STOPS) {
-    tips.push({ kind: 'stops', tested: false, save: 0, text: `Idea: you stopped agents ${path.stops} times. Try a clearer first message.` });
+    tips.push({ kind: 'stops', tested: false, save: 0, text: `Try this: you stopped the AI ${path.stops} times. Say exactly what you want in your first message.` });
   }
   return { steps, newTokens, rereadTokens, saved, tips };
 }

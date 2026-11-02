@@ -183,7 +183,7 @@ test('a long growing chat gets a tested saving', () => {
   const a = sessionAdvice(facts(600, 1200000, {}, 'm', { requests: growing(600) }));
   assert.equal(a.saved > 0, true);
   assert.equal(a.tips[0].tested, true);
-  assert.match(a.tips[0].text, /A replay with a new chat every 300 steps saved about/);
+  assert.match(a.tips[0].text, /Starting a fresh chat every 300 steps could have saved about/);
 });
 
 test('a short chat gets no saving and no tip', () => {
@@ -192,14 +192,14 @@ test('a short chat gets no saving and no tip', () => {
   assert.deepEqual(a.tips, []);
 });
 
-test('the untested tips show no saving and say Idea', () => {
+test('the untested tips show no saving and say Try this', () => {
   const small = facts(120, 1000, { messages: 80, actions: 100, stops: 4 }, 'claude-opus-x');
   small.byDay['2026-10-01'].newTokens = 12000;
   small.byModel['claude-opus-x'].newTokens = 12000;
   const { tips, saved } = sessionAdvice(small);
   assert.deepEqual(tips.map((x) => x.kind), ['short-messages', 'large-model', 'stops']);
   assert.equal(saved, 0);
-  assert.equal(tips.every((x) => x.text.startsWith('Idea:') && x.tested === false), true);
+  assert.equal(tips.every((x) => x.text.startsWith('Try this:') && x.tested === false), true);
 });
 
 test('advice lists the latest session and the biggest savings', () => {

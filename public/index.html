@@ -138,14 +138,26 @@ h2{font-weight:700}
 #changes:empty,#notes:empty,#back:empty{display:none}
 #save[hidden]{display:none}
 .dl{border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
-.dl-bar{all:unset;box-sizing:border-box;display:flex;gap:10px;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:16px;cursor:pointer;font-size:14.5px}
+.dl-bar{all:unset;box-sizing:border-box;display:flex;gap:12px;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:16px;cursor:pointer}
+.dl-t{display:grid;text-align:center}
+.dl-t b{font-size:15px;font-weight:600}
+.dl-t small{font-size:13px;color:var(--soft)}
+.dl-bar em{font-style:normal;font-size:13px;font-weight:600;color:var(--acc);white-space:nowrap}
 .dl-bar:hover{box-shadow:var(--press)}
 .dl-bar:focus-visible{outline:2px solid var(--acc)}
 .dl-bar i{font-style:normal;font-size:18px;animation:glow 2.4s ease-in-out infinite}
-.dl-bar b{font-size:13px;font-weight:600;color:var(--acc);white-space:nowrap}
 @keyframes glow{50%{transform:scale(1.18) rotate(-6deg);filter:drop-shadow(0 0 6px var(--acc))}}
 @media(prefers-reduced-motion:reduce){.dl-bar i{animation:none}}
-.dl-more{padding:2px 18px 14px}
+.adv #body>*{display:none!important}
+.adv #body>#advicePage{display:grid!important}
+#advicePage{display:none;gap:16px}
+.ad-back{all:unset;justify-self:start;cursor:pointer;font-size:14px;color:var(--acc)}
+.ad-back:hover{text-decoration:underline}
+.ad-back:focus-visible{outline:2px solid var(--acc)}
+.ad-title{margin:0;font-size:26px;font-weight:600}
+.ad-sum .sv-sum{margin:6px 0}
+.ad-sum .sv-sum b{font-size:30px}
+.ad-list .sv-h:first-child{margin-top:0}
 .dl-note{margin:0 0 8px;text-align:center;font-size:12.5px;color:var(--mut)}
 .sv-sum{text-align:center;margin:6px 0 10px}
 .sv-sum span,.sv-sum small{display:block;color:var(--mut);font-size:13px}
@@ -164,7 +176,7 @@ h2{font-weight:700}
 @keyframes pop{from{transform:scale(.92);opacity:0}}
 @media(prefers-reduced-motion:reduce){.bubs .bub{animation:none}}
 .sv-h{margin:12px 0 2px;font-size:13px;font-weight:600;color:var(--mut)}
-.sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 110px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
+.sv-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:70px minmax(0,1fr) 60px 90px 150px;gap:10px;align-items:center;width:100%;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13.5px}
 .sv-row:hover{background:var(--hover)}
 .sv-row:focus-visible{outline:2px solid var(--acc)}
 .sv-row b{text-align:right;font:600 13.5px var(--mono);color:var(--hi)}
@@ -219,6 +231,7 @@ main{grid-template-columns:minmax(0,1fr)}
     <section class="tiles" id="tiles"></section>
     <section class="card"><h2>Which AI did the work <span id="llmfor" style="color:var(--mut);font-weight:400"></span></h2><div id="models"></div></section>
     <div id="changes"></div>
+    <section id="advicePage"></section>
   </div>
 </main>
 <script>
@@ -232,7 +245,7 @@ const NAME = { claude: 'Claude', codex: 'Codex' };
 const EMPTY = { id: '', name: '', newTokens: 0, rereadTokens: 0, requests: 0, agents: 0, subagents: 0, days: 0, hours: 0, files: 0, path: {}, pathMissing: 0, perDay: [], perModel: [], topSessions: [], lastAt: 0 };
 const $ = (id) => document.getElementById(id);
 
-let saveOpen = false, openSave = null, data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
+let openSave = null, data = null, failed = false, k = 'all', pick = null, act = null, renaming = false, openModel = null, lastJson = '';
 let colors = new Map(), dates = [], trendS = [], trendHover = -1;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -460,8 +473,8 @@ function llmGraph() {
 /* Advice on saving tokens. Every saving is an estimate from numbers only. */
 function saveRow(r, label) {
   const open = openSave === r.at;
-  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>This session looked efficient.</span></div>';
-  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Save ${fmt(r.saved)}` : 'Good'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
+  const tips = r.tips.length ? r.tips.map((x) => `<div class="bub${x.tested ? ' hot' : ''}"><span>${esc(x.text)}</span></div>`).join('') : '<div class="bub hot"><span>This chat looked good. Nothing to change.</span></div>';
+  return `<button class="sv-row" data-at="${r.at}" aria-expanded="${open}"><span>${esc(label ?? shortDate(r.date))}</span><span>${esc(r.product)}</span><span style="color:${COL[r.llm]}">${NAME[r.llm]}</span><span>${num(r.steps)} steps</span><b>${r.saved ? `Could save ${fmt(r.saved)}` : 'Looks good'}</b></button>${open ? `<div class="sv-tips">${tips}</div>` : ''}`;
 }
 function saveTokens() {
   const v = viewOf(k);
@@ -471,22 +484,29 @@ function saveTokens() {
   el.hidden = false;
   const share = a.rereadTokens ? a.saved / a.rereadTokens * 100 : 0;
   const tested = a.longChats
-    ? `<div class="bub hot"><b>🚀 Start a new chat more often</b><span>${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and made ${(a.longChatShare * 100).toFixed(0)}% of your tokens read again.</span><u>Tested on your logs</u></div>`
-    : `<div class="bub hot"><b>🎉 Your chats are a good length</b><span>None went past ${a.longChatSteps} steps.</span><u>Tested on your logs</u></div>`;
-  const idea = (title, text) => `<div class="bub"><b>${title}</b><span>${text}</span><u>Idea to try</u></div>`;
-  const general = `<div class="bubs">${tested}${a.repeatedFiles ? idea('📝 Keep short notes', `${plural(a.repeatedFiles, 'file')} changed in ${a.repeatSessions} or more sessions.`) : ''}${idea('✉️ Group your requests', 'Put several requests in one message.')}${idea('🪶 Use a smaller model', 'Keep the largest model for hard work.')}</div>`;
+    ? `<div class="bub hot"><b>🚀 Start fresh chats more often</b><span>The AI rereads the whole chat at every step, so long chats get costly. ${plural(a.longChats, 'chat')} went past ${a.longChatSteps} steps and caused ${(a.longChatShare * 100).toFixed(0)}% of all rereading.</span><u>Checked with your own data</u></div>`
+    : `<div class="bub hot"><b>🎉 Your chats are a good length</b><span>None went past ${a.longChatSteps} steps, so the AI did not reread too much.</span><u>Checked with your own data</u></div>`;
+  const idea = (title, text) => `<div class="bub"><b>${title}</b><span>${text}</span><u>Worth trying</u></div>`;
+  const general = `<div class="bubs">${tested}${a.repeatedFiles ? idea('📝 Keep a short notes file', `${plural(a.repeatedFiles, 'file')} changed again and again. A short note can save the AI from reading them each time.`) : ''}${idea('✉️ Ask for more in one message', 'Every message makes the AI reread the chat. Put related requests together.')}${idea('🪶 Use a smaller model', 'Small jobs do not need the biggest model.')}</div>`;
   const worst = a.worst.filter((r) => r.at !== a.latest.at);
   const tip = a.latest.tips.find((x) => x.save);
   const short = tip?.save
-    ? `Last session: about ${fmt(tip.save)} tokens could have been saved.`
-    : 'Last session looked efficient. Nice work!';
-  const more = saveOpen ? `<div class="dl-more">
-<p class="dl-note">The saving comes from replaying your long chats with a new chat every ${a.longChatSteps} steps. It is an estimate, and it counts tokens, not money. Token Tally cannot read your chats, so it cannot know if a task needed the extra steps.</p>
-<div class="sv-sum"><span>Could have saved</span><b>About ${fmt(a.saved)} tokens</b><small>${share.toFixed(0)}% of tokens read again</small></div>
-<h3 class="bub-h">Tips to improve</h3>${general}
-<h3 class="sv-h">Last session</h3>${saveRow(a.latest)}
-${worst.length ? `<h3 class="sv-h">Biggest chances to save</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>` : '';
-  setHTML(el, `<button class="dl-bar" aria-expanded="${saveOpen}"><i>💡</i><span>${esc(short)}</span><b>${saveOpen ? 'Hide tips' : 'See tips'}</b></button>${more}`);
+    ? `Your last chat: you could have used about ${fmt(tip.save)} fewer tokens.`
+    : 'Your last chat looked good. Nice work!';
+  setHTML(el, `<button class="dl-bar"><i>💡</i><span class="dl-t"><b>Your Token Advice</b><small>${esc(short)}</small></span><em>Open →</em></button>`);
+  setHTML($('advicePage'), `<button class="ad-back">← Back to dashboard</button>
+<h2 class="ad-title">💡 Your Token Advice</h2>
+<p class="dl-note">This is our best guess. We replayed your long chats as if you started a fresh chat every ${a.longChatSteps} steps. A step is one action by the AI. We cannot read your chats, so some long chats may have been needed.</p>
+<div class="card ad-sum"><div class="sv-sum"><span>You could have used about</span><b>${fmt(a.saved)} fewer tokens</b><small>That is ${share.toFixed(0)}% of the tokens spent rereading old chat</small></div></div>
+<h3 class="bub-h">Tips to use fewer tokens</h3>${general}
+<div class="card ad-list"><h3 class="sv-h">Your last chat</h3>${saveRow(a.latest)}
+${worst.length ? `<h3 class="sv-h">Chats where you could save the most</h3>${worst.map((r) => saveRow(r)).join('')}` : ''}</div>`);
+}
+function showPage() {
+  const on = location.hash === '#advice';
+  document.body.classList.toggle('adv', on);
+  if (on) scrollTo(0, 0);
+  else if (data?.sessionCount) { layout(); llmGraph(); }
 }
 
 /* Rename, Join, Hide, Assign and Undo. */
@@ -698,7 +718,13 @@ mapEl.addEventListener('click', (e) => pressBox(e.target));
 mapEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.lab[role=button]')) { e.preventDefault(); pressBox(e.target); } });
 mapEl.addEventListener('mouseover', (e) => { const l = e.target.closest('.lab[data-seg]'); hover = l ? +l.dataset.seg : -1; if (still) draw(0); });
 mapEl.addEventListener('mouseleave', () => { hover = -1; if (still) draw(0); });
-$('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar')) { saveOpen = !saveOpen; saveTokens(); return; } const r = e.target.closest('.sv-row'); if (r) { const at = +r.dataset.at; openSave = openSave === at ? null : at; saveTokens(); } });
+$('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar')) location.hash = 'advice'; });
+$('advicePage').addEventListener('click', (e) => {
+  if (e.target.closest('.ad-back')) { location.hash = ''; return; }
+  const r = e.target.closest('.sv-row');
+  if (r) { const at = +r.dataset.at; openSave = openSave === at ? null : at; saveTokens(); }
+});
+addEventListener('hashchange', showPage);
 $('detail').addEventListener('click', (e) => {
   const open = e.target.closest('.orow');
   if (e.target.closest('[data-x]') || open) act = null;
@@ -765,6 +791,7 @@ let saved = 'sky';
 try { saved = localStorage.getItem('st-theme') || 'sky'; } catch { /* Use the default theme. */ }
 setTheme(saved);
 render();
+showPage();
 load();
 setInterval(load, REFRESH_MS);
 requestAnimationFrame(loop);
