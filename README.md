@@ -9,7 +9,7 @@ Everything runs on your own computer. The tool has no accounts, and it sends not
 You need Node.js 20 or later.
 
 ```
-npx github:manyatamanocha/Token-Tally
+npx @manyatamanocha/token-tally
 ```
 
 The first run asks if the tool can connect to Claude Code. A yes adds one `SessionEnd` hook to your Claude Code settings and makes a backup of that file. Numbers then save when the dashboard is closed. A no is also fine: the dashboard works, but it can miss logs that Claude Code deletes while the dashboard is closed.
@@ -59,7 +59,7 @@ The tool stores numbers, dates, model names, request IDs, session IDs and produc
 ## Remove it
 
 ```
-npx github:manyatamanocha/Token-Tally uninstall
+npx @manyatamanocha/token-tally uninstall
 ```
 
 This removes the hook. Delete `~/.token-tally` to remove your numbers too.
