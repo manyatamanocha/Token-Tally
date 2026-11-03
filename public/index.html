@@ -140,7 +140,8 @@ h2{font-weight:700}
 #mapin>.col:first-child{justify-content:center;gap:52px}
 #mapin>.col:first-child .lab{min-height:104px;display:grid;align-content:center;gap:2px;padding:12px 14px}
 #save[hidden]{display:none}
-#demo[hidden],#demoPanel[hidden],#join[hidden]{display:none}
+#demo[hidden],#demoPanel[hidden],#join[hidden],#cmdBox[hidden]{display:none}
+#cmdBox{display:grid;gap:10px}
 .demo{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center;padding:12px 18px;border-radius:16px;background:var(--acc);color:var(--on)}
 .demo p{margin:0;font-size:15px}
 .demo-go{all:unset;cursor:pointer;padding:7px 16px;border-radius:999px;font-weight:600;font-size:14px;background:var(--on);color:var(--acc)}
@@ -151,7 +152,7 @@ h2{font-weight:700}
 .cmd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 10px 10px 16px;border-radius:14px;box-shadow:var(--press)}
 .cmd code{font:600 14.5px var(--mono);overflow-wrap:anywhere}
 .cmd button,.join button{all:unset;cursor:pointer;padding:8px 14px;border-radius:11px;font-size:14px;font-weight:600;color:var(--on);background:var(--acc);white-space:nowrap}
-.join{display:grid;gap:8px;margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}
+.join{display:grid;gap:8px}
 .join div{display:flex;gap:10px}
 .join input{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 12px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .join-msg{min-height:1.2em;text-align:center;color:var(--ink)!important}
@@ -277,18 +278,20 @@ main{max-width:1680px}
   <section class="card demo-panel" id="demoPanel" hidden>
     <h2>Use Token Tally with your own data</h2>
     <p>Token Tally runs on your own computer and reads the logs that Claude Code and Codex already keep there. Your numbers never leave your computer.</p>
-    <ol>
-      <li>Install Node.js 20 or newer from nodejs.org, if you do not have it.</li>
-      <li>Open Terminal and paste this line:</li>
-    </ol>
-    <div class="cmd"><code id="cmd">npx -y @manyatamanocha/token-tally</code><button id="copy">Copy</button></div>
-    <ol start="3"><li>Type y when it asks to connect to Claude Code. Your live dashboard then opens in your browser.</li></ol>
-    <form class="join" id="join" hidden>
-      <h3>Get updates (optional)</h3>
-      <p>Leave your email to hear about new versions. We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
-      <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com" aria-label="Your email"><button type="submit">Join</button></div>
+    <form class="join" id="join">
+      <h3>Enter your email to get the install command</h3>
+      <p>We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
+      <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com" aria-label="Your email"><button type="submit">Continue</button></div>
       <p class="join-msg" id="joinMsg" role="status"></p>
     </form>
+    <div id="cmdBox" hidden>
+      <ol>
+        <li>Install Node.js 20 or newer from nodejs.org, if you do not have it.</li>
+        <li>Open Terminal and paste this line:</li>
+      </ol>
+      <div class="cmd"><code id="cmd">npx -y @manyatamanocha/token-tally</code><button id="copy" type="button">Copy</button></div>
+      <ol start="3"><li>Type y when it asks to connect to Claude Code. Your live dashboard then opens in your browser.</li></ol>
+    </div>
   </section>
   <section class="card" id="empty" hidden></section>
   <div id="body" hidden>
@@ -880,9 +883,8 @@ addEventListener('resize', () => { layout(); if (data?.sessionCount) llmGraph();
 
 /* Demo mode */
 function demoNote(text) {
-  const el = $('joinMsg');
   $('demoPanel').hidden = false;
-  el.textContent = text;
+  $('joinMsg').textContent = text;
 }
 if (DEMO) {
   $('demo').hidden = false;
@@ -891,24 +893,26 @@ if (DEMO) {
     try { await navigator.clipboard.writeText($('cmd').textContent); e.target.textContent = 'Copied'; } catch { e.target.textContent = 'Select and copy'; }
     setTimeout(() => { e.target.textContent = 'Copy'; }, 1800);
   });
-  if (SIGNUP?.url && SIGNUP?.key) {
-    $('join').hidden = false;
-    $('join').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = $('joinEmail').value.trim();
-      const msg = $('joinMsg');
-      msg.textContent = 'Saving…';
-      try {
-        const headers = { apikey: SIGNUP.key, 'content-type': 'application/json', prefer: 'return=minimal' };
-        if (!SIGNUP.key.startsWith('sb_')) headers.authorization = `Bearer ${SIGNUP.key}`;
-        const res = await fetch(`${SIGNUP.url}/rest/v1/signups`, { method: 'POST', headers, body: JSON.stringify({ email }) });
-        if (res.ok || res.status === 409) { msg.textContent = 'Thanks! You are on the list.'; $('joinEmail').value = ''; }
-        else msg.textContent = 'That did not work. Please try again later.';
-      } catch {
-        msg.textContent = 'That did not work. Please check your connection.';
-      }
-    });
-  }
+  const unlock = () => { $('join').hidden = true; $('cmdBox').hidden = false; };
+  try { if (localStorage.getItem('tt-joined') === '1') unlock(); } catch { /* Ask again next time. */ }
+  $('join').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('joinEmail').value.trim();
+    const msg = $('joinMsg');
+    if (!SIGNUP?.url || !SIGNUP?.key) { msg.textContent = 'Sign-up is not available right now. Please try again later.'; return; }
+    msg.textContent = 'Saving…';
+    try {
+      const headers = { apikey: SIGNUP.key, 'content-type': 'application/json', prefer: 'return=minimal' };
+      if (!SIGNUP.key.startsWith('sb_')) headers.authorization = `Bearer ${SIGNUP.key}`;
+      const res = await fetch(`${SIGNUP.url}/rest/v1/signups`, { method: 'POST', headers, body: JSON.stringify({ email }) });
+      if (res.ok || res.status === 409) {
+        try { localStorage.setItem('tt-joined', '1'); } catch { /* Fine for this visit. */ }
+        unlock();
+      } else msg.textContent = res.status === 400 ? 'Please check your email address.' : 'That did not work. Please try again later.';
+    } catch {
+      msg.textContent = 'That did not work. Please check your connection.';
+    }
+  });
 }
 
 /* Live refresh */
