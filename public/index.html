@@ -122,6 +122,7 @@ h2{font-weight:700}
 .sb{display:flex;gap:3px;height:36px;margin-bottom:14px}
 .sbs{all:unset;box-sizing:border-box;min-width:6px;display:grid;place-items:center;overflow:hidden;white-space:nowrap;padding:0 10px;color:var(--on);font:600 14px var(--sans);cursor:pointer;transition:opacity .15s,filter .15s}
 .sbs:first-child{border-radius:10px 4px 4px 10px}.sbs:last-child{border-radius:4px 10px 10px 4px}.sbs:only-child{border-radius:10px}
+.sbs:last-child:not(:first-child){padding:0 4px}
 .sbs:hover{filter:brightness(1.1)}.sbs.dim{opacity:.35}.sbs:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .ag{all:unset;box-sizing:border-box;display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:12px 10px;border-radius:10px;cursor:pointer;font-size:15px}
 .ag i{width:14px;height:14px;border-radius:5px;background:var(--c)}.ag strong{color:var(--c);font-size:17px}
@@ -139,6 +140,12 @@ h2{font-weight:700}
 #mapin>.col:first-child{justify-content:center;gap:52px}
 #mapin>.col:first-child .lab{min-height:104px;display:grid;align-content:center;gap:2px;padding:12px 14px}
 #save[hidden]{display:none}
+.sg-c{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.sg{display:grid;font-size:13.5px}
+.sg small{color:var(--mut);font-size:12px}
+.sg-ok{all:unset;cursor:pointer;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--on);background:var(--acc)}
+.sg-ok:hover{filter:brightness(1.1)}
+.sg-ok:focus-visible{outline:2px solid var(--ink)}
 .dl{border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
 .dl-bar{all:unset;box-sizing:border-box;display:flex;gap:12px;align-items:center;justify-content:center;width:100%;padding:10px 16px;border-radius:16px;cursor:pointer}
 .dl-t{display:grid;text-align:center}
@@ -234,7 +241,8 @@ main{max-width:1680px}
 .ringcard{grid-column:1;grid-row:span 3;align-self:stretch}
 .ringcard{padding:22px 24px}
 .ringcard .ringmap{grid-template-columns:210px minmax(0,1fr) 232px;height:100%}
-.ringcard .mid{width:176px}
+.ringcard .mid{width:178px;padding:12px 10px;background:radial-gradient(closest-side,var(--mid) 86%,transparent)}
+.ringcard .mid span{font-size:11.5px}
 .two,#tiles,.llmcard{grid-column:2}
 #tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
 #tiles .tile{grid-column:span 2}
@@ -328,7 +336,7 @@ function leftBoxes(s) {
   const out = [lab(TH.you, '🧑', 'You', plural(path.messages ?? 0, 'message'), `You stopped agents ${plural(path.stops ?? 0, 'time')}.`, 'you')];
   for (const x of keys()) {
     const v = statOf(x);
-    out.push(lab(COL[x], '🤖', `${NAME[x]} agents`, `${num(v.agents)} main, ${num(v.subagents)} helpers`, `One main agent is one ${NAME[x]} chat.`, x));
+    out.push(lab(COL[x], '🤖', `${NAME[x]} agents`, `${num(v.agents)} main, ${plural(v.subagents, 'subagent')}`, `One main agent is one ${NAME[x]} chat.`, x));
   }
   out.push(lab(TH.mem, '🧠', 'Memory', `${fmt(s.rereadTokens)} tokens`, 'Old chat read again at each step.', 'memory'));
   return out.join('');
@@ -479,7 +487,7 @@ function llmGraph() {
   const bar = groups.map((g) => {
     const dim = openModel && !inGroup(g);
     const share = g.value / total * 100;
-    return `<button class="sbs${dim ? ' dim' : ''}" data-m="${g.x}" style="flex:${g.value} 0 0;background:${COL[g.x]}" title="${NAME[g.x]}: ${fmt(g.value)} new tokens" aria-label="${NAME[g.x]}, ${share.toFixed(1)}%">${share >= 6 ? `${NAME[g.x]} ${share.toFixed(1)}%` : ''}</button>`;
+    return `<button class="sbs${dim ? ' dim' : ''}" data-m="${g.x}" style="flex:${g.value} 0 0;background:${COL[g.x]}" title="${NAME[g.x]}: ${fmt(g.value)} new tokens" aria-label="${NAME[g.x]}, ${share.toFixed(1)}%">${share >= 16 ? `${NAME[g.x]} ${share.toFixed(1)}%` : share >= 5 ? `${Math.round(share)}%` : ''}</button>`;
   }).join('');
   const chips = (parts) => `<div class="vparts">${parts.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} <b>${fmt(p.value)}</b></span>`).join('')}</div>`;
   const scope = pick ? 'of this product\'s new tokens' : 'of all new tokens';
@@ -577,8 +585,12 @@ function manage(s) {
   let html = '';
   if (pick === UNSORTED) {
     const options = `<option value="">Assign to</option>${v.products.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}`;
-    const sessions = (v.unsorted?.topSessions ?? []).map((t) => `<tr><td class="l n">${shortDate(t.date)}</td><td>${fmt(t.newTokens)}</td><td>${num(t.requests)}</td><td><select data-assign="${esc(t.sessionId)}" aria-label="Assign this session to a product">${options}</select></td></tr>`).join('');
-    html = `<h2>Sort this work <em>Choose the product each session belongs to.</em></h2><table><tr><th class="l">Date</th><th>New tokens</th><th>Steps</th><th>Product</th></tr>${sessions}</table>`;
+    const sessions = (v.unsorted?.topSessions ?? []).map((t) => {
+      const sg = v.suggestions?.[t.sessionId];
+      const hint = sg ? `<span class="sg">Maybe <b>${esc(sg.name)}</b><small>You worked on it at the same time, ${plural(sg.minutes, 'minute')}.</small></span><button class="sg-ok" data-accept="${esc(t.sessionId)}" data-id="${esc(sg.id)}">Accept</button>` : '<span class="sg"><small>No clue found</small></span>';
+      return `<tr><td class="l n">${shortDate(t.date)}</td><td>${fmt(t.newTokens)}</td><td>${num(t.requests)}</td><td class="l n sg-c">${hint}</td><td><select data-assign="${esc(t.sessionId)}" aria-label="Assign this session to a product">${options}</select></td></tr>`;
+    }).join('');
+    html = `<h2>Sort this work <em>Choose the product each session belongs to. Suggestions are only clues: you often work on two products at once, so check each one.</em></h2><table><tr><th class="l">Date</th><th>New tokens</th><th>Steps</th><th class="l">Suggestion</th><th>Or choose</th></tr>${sessions}</table>`;
   } else if (renaming) {
     html = `<form class="acts" id="rename-form"><input id="rename-input" value="${esc(s.name)}" aria-label="Product name"><button type="submit">Save</button><button type="button" data-do="cancel">Cancel</button></form>`;
   } else {
@@ -795,6 +807,8 @@ const trendEl = $('trend');
 trendEl.addEventListener('mousemove', (e) => { const r = trendEl.getBoundingClientRect(); trendHover = Math.max(0, Math.min(dates.length - 1, Math.round((e.clientX - r.left - 48) / (r.width - 56) * (dates.length - 1)))); if (still) drawTrend(0); });
 trendEl.addEventListener('mouseleave', () => { trendHover = -1; });
 $('manage').addEventListener('click', (e) => {
+  const ok = e.target.closest('[data-accept]');
+  if (ok) { send({ action: 'assign', sessionId: ok.dataset.accept, id: ok.dataset.id }); return; }
   const d = e.target.closest('[data-do]')?.dataset.do;
   if (d === 'rename') { renaming = true; render(); }
   else if (d === 'cancel') { renaming = false; render(); }

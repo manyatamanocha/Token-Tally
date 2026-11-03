@@ -147,6 +147,25 @@ function tapeRow(facts, overrides, nameOf) {
   };
 }
 
+/* A clue, not proof: the product that was worked on in another session at the same time. */
+export function suggestProducts(unsorted, known) {
+  const result = {};
+  for (const s of unsorted) {
+    const overlap = new Map();
+    for (const { facts, id } of known) {
+      for (const [a, b] of s.spans) {
+        for (const [c, d] of facts.spans) {
+          const o = Math.min(b, d) - Math.max(a, c);
+          if (o > 0) overlap.set(id, (overlap.get(id) ?? 0) + o);
+        }
+      }
+    }
+    const [id, ms] = [...overlap].sort((x, y) => y[1] - x[1])[0] ?? [];
+    if (id) result[s.sessionId] = { id, minutes: Math.max(1, Math.round(ms / 60000)) };
+  }
+  return result;
+}
+
 export function buildDashboard(record, now, llm = null) {
   const { overrides } = record;
   const buckets = new Map();
@@ -196,6 +215,12 @@ export function buildDashboard(record, now, llm = null) {
     })),
     sessionCount: sessions.length,
     totals: toStats('all', 'All products', everything),
+    suggestions: (() => {
+      const ok = new Set(products.map((p) => p.id));
+      const tagged = sessions.map((facts) => ({ facts, id: topProduct(facts, overrides) }));
+      const s = suggestProducts(tagged.filter((x) => x.id === UNSORTED).map((x) => x.facts), tagged.filter((x) => ok.has(x.id)));
+      return Object.fromEntries(Object.entries(s).map(([k, v]) => [k, { ...v, name: nameOf(v.id) }]));
+    })(),
     advice: {
       ...buildAdvice(sessions, describe, { keepAll: true }),
       byProduct: Object.fromEntries([...new Set(sessions.map((s) => topProduct(s, overrides)))].map((id) => [id, buildAdvice(sessions.filter((s) => topProduct(s, overrides) === id), describe)])),

@@ -1,6 +1,6 @@
 {
   "name": "@manyatamanocha/token-tally",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Live local dashboard of days, hours, agents and tokens for each product made with Claude Code and Codex.",
   "type": "module",
   "bin": {

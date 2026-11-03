@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as zlib from 'node:zlib';
 import { buildAdvice, replaySaving, sessionAdvice } from '../src/advice.js';
-import { buildDashboard } from '../src/aggregate.js';
+import { buildDashboard, suggestProducts } from '../src/aggregate.js';
 import { parseCodexSession } from '../src/codex.js';
 import { ingest } from '../src/ingest.js';
 import { parseSession } from '../src/parse.js';
@@ -256,4 +256,11 @@ test('all sessions are kept only when asked, newest first', () => {
   const list = [facts(5, 5, {}, 'm', { lastAt: 1 }), facts(5, 5, {}, 'm', { lastAt: 9 })];
   assert.equal(buildAdvice(list, () => ({})).all, undefined);
   assert.deepEqual(buildAdvice(list, () => ({}), { keepAll: true }).all.map((r) => r.at), [9, 1]);
+});
+
+test('a session is matched to the product worked on at the same time', () => {
+  const s = (id, spans) => ({ sessionId: id, spans });
+  const known = [{ facts: s('a', [[0, 600000]]), id: '/p/one' }, { facts: s('b', [[0, 60000]]), id: '/p/two' }];
+  const got = suggestProducts([s('x', [[0, 300000]]), s('y', [[900000, 999000]])], known);
+  assert.deepEqual(got, { x: { id: '/p/one', minutes: 5 } });
 });
