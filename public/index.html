@@ -298,7 +298,7 @@ main{max-width:1680px}
       <p>See how much Claude Code and Codex work went into each of your products: days, hours, agents and tokens, plus tips to save tokens.</p>
       <p>Behind this box is a demo with example products and numbers.</p>
       <form class="join" id="signup">
-        <label for="joinEmail">Enter your email to get the install command</label>
+        <label for="joinEmail" id="joinLabel">Enter your email to get the install command</label>
         <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com"><button type="submit">Continue</button></div>
         <p class="join-note">We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
         <p class="join-msg" id="joinMsg" role="status"></p>
@@ -341,6 +341,16 @@ main{max-width:1680px}
 const REFRESH_MS = 5000;
 const DEMO = Boolean(window.TT_DEMO);
 const SIGNUP = window.TT_SIGNUP ?? null;
+let demoJoined = false;
+let wantAdvice = false;
+/* In the demo, the Token Advice page asks for sign-up first. */
+function adviceLocked() {
+  if (!DEMO || demoJoined) return false;
+  wantAdvice = true;
+  $('joinLabel').textContent = 'Sign up to open your Token Advice';
+  openDlg();
+  return true;
+}
 const UNSORTED = '__unsorted__';
 const OTHER = '__other__';
 const THEMES = {"sky":{"shadow":"9px 9px 20px #d3deeb,-9px -9px 20px #ffffff","press":"inset 4px 4px 9px #d3deeb,inset -4px -4px 9px #ffffff","bg":"#eef3f9","card":"#eef3f9","lab":"#eef3f9f2","line":"#d9e2ee","ink":"#14202e","mut":"#66768a","soft":"#44556a","acc":"#2563eb","on":"#ffffff","hover":"#e8eff8","hi":"#1d4ed8","glow":"#2563eb14","mid":"#eef3f9","claude":"#2563eb","codex":"#0f9d8a","pal":["#2563eb","#0f9d8a","#7a5bd0","#e8741a","#d23f73","#4f8a3a","#66768a"],"d":["#2563eb","#5b8def","#1d4ed8"],"dn":"#b4c2d4","g":["#2563eb1c","#2563eb0c","#2563eb00"],"wire":"#000000","op":"source-over","you":"#1d4ed8","mem":"#7a5bd0","out":"#1d4ed8","file":"#1d4ed8"},"violet":{"shadow":"8px 8px 20px #05030b,-6px -6px 16px #1c1433","press":"inset 4px 4px 9px #0a0614,inset -3px -3px 8px #1f1738","bg":"#130c22","card":"#130c22","lab":"#130c22e6","line":"#2b2140","ink":"#f1ecfa","mut":"#9a90b0","soft":"#c6bcd9","acc":"#9b6bff","on":"#0a0614","hover":"#1e1533","hi":"#c9aeff","glow":"#6b3bff24","mid":"#0d0819","claude":"#b68bff","codex":"#5ee0d6","pal":["#9b6bff","#5ee0d6","#ff7ac6","#ffc46b","#6fb7ff","#b7d968","#b9b2c8"],"d":["#e3d4ff","#b68bff","#7a4dff"],"dn":"#4a3d6b","g":["#7a4dff30","#7a4dff14","#7a4dff00"],"wire":"#ffffff","op":"lighter","you":"#e3d4ff","mem":"#ff7ac6","out":"#b68bff","file":"#c9aeff"}};
@@ -636,6 +646,7 @@ ${progressCard(a)}
 ${showAll ? `<h3 class="sv-h">All sessions, newest first</h3>${allRows.map((r) => saveRow(r)).join('')}` : ''}</div>`);
 }
 function showPage() {
+  if (location.hash === '#advice' && adviceLocked()) { history.replaceState(null, '', location.pathname + location.search); }
   const on = location.hash === '#advice';
   document.body.classList.toggle('adv', on);
   if (on) scrollTo(0, 0);
@@ -857,7 +868,7 @@ mapEl.addEventListener('click', (e) => pressBox(e.target));
 mapEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.lab[role=button]')) { e.preventDefault(); pressBox(e.target); } });
 mapEl.addEventListener('mouseover', (e) => { const l = e.target.closest('.lab[data-seg]'); hover = l ? +l.dataset.seg : -1; if (still) draw(0); });
 mapEl.addEventListener('mouseleave', () => { hover = -1; if (still) draw(0); });
-$('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar')) location.hash = 'advice'; });
+$('save').addEventListener('click', (e) => { if (e.target.closest('.dl-bar') && !adviceLocked()) location.hash = 'advice'; });
 $('advicePage').addEventListener('click', (e) => {
   if (e.target.closest('.ad-back')) { location.hash = ''; return; }
   if (e.target.closest('.ad-all')) { showAll = !showAll; saveTokens(); return; }
@@ -916,17 +927,22 @@ function demoNote(text) {
 }
 if (DEMO) {
   $('demo').hidden = false;
-  $('demoGo').addEventListener('click', openDlg);
+  $('demoGo').addEventListener('click', () => { wantAdvice = false; $('joinLabel').textContent = 'Enter your email to get the install command'; $('dlgLook').textContent = 'Look at the demo first'; openDlg(); });
   $('dlgX').addEventListener('click', closeDlg);
-  $('dlgLook').addEventListener('click', closeDlg);
+  $('dlgLook').addEventListener('click', () => { closeDlg(); if (wantAdvice && demoJoined) { wantAdvice = false; location.hash = 'advice'; } });
   $('demoPanel').addEventListener('click', (e) => { if (e.target === $('demoPanel')) closeDlg(); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('demoPanel').hidden) closeDlg(); });
-  openDlg();
+  if (location.hash !== '#advice') openDlg();
   $('copy').addEventListener('click', async (e) => {
     try { await navigator.clipboard.writeText($('cmd').textContent); e.target.textContent = 'Copied'; } catch { e.target.textContent = 'Select and copy'; }
     setTimeout(() => { e.target.textContent = 'Copy'; }, 1800);
   });
-  const unlock = () => { $('signup').hidden = true; $('cmdBox').hidden = false; };
+  const unlock = () => {
+    demoJoined = true;
+    $('signup').hidden = true;
+    $('cmdBox').hidden = false;
+    if (wantAdvice) $('dlgLook').textContent = 'Open the Token Advice';
+  };
   try { if (localStorage.getItem('tt-joined') === '1') unlock(); } catch { /* Ask again next time. */ }
   $('signup').addEventListener('submit', async (e) => {
     e.preventDefault();
