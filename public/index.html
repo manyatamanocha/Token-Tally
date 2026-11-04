@@ -144,22 +144,22 @@ h2{font-weight:700}
 .demo{display:flex;justify-content:center}
 .demo-go{all:unset;cursor:pointer;padding:10px 22px;border-radius:999px;font-weight:600;font-size:15px;background:var(--acc);color:var(--on)}
 .demo-go:focus-visible,.dlg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-.demo-panel{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(10,20,40,.28);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);overflow:auto}
-.dlg{position:relative;display:grid;gap:14px;width:100%;max-width:600px;padding:36px 36px 26px;border-radius:24px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.28)}
-.dlg h2{margin:0;font-size:30px;text-align:center}
-.dlg h3{margin:0;font-size:20px;text-align:center}
-.dlg p,.dlg ol{margin:0;color:var(--soft);font-size:16px;line-height:1.5}
+.demo-panel{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(10,20,40,.12);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);overflow:auto}
+.dlg{position:relative;display:grid;gap:10px;width:100%;max-width:460px;padding:26px 26px 18px;border-radius:20px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.dlg h2{margin:0;font-size:24px;text-align:center}
+.dlg h3{margin:0;font-size:18px;text-align:center}
+.dlg p,.dlg ol{margin:0;color:var(--soft);font-size:14.5px;line-height:1.45}
 .dlg-x{all:unset;cursor:pointer;position:absolute;top:12px;right:16px;font-size:28px;line-height:1;color:var(--soft);padding:4px 8px;border-radius:8px}
 .dlg-look{all:unset;cursor:pointer;justify-self:center;font-size:15px;color:var(--soft);text-decoration:underline;padding:4px}
 #cmdBox{display:grid;gap:12px}
 .cmd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 12px 12px 18px;border-radius:14px;box-shadow:var(--press)}
-.cmd code{font:600 15px var(--mono);overflow-wrap:anywhere}
-.cmd button,.join button{all:unset;cursor:pointer;padding:12px 22px;border-radius:12px;font-size:16px;font-weight:600;color:var(--on);background:var(--acc);white-space:nowrap}
+.cmd code{font:600 14px var(--mono);overflow-wrap:anywhere}
+.cmd button,.join button{all:unset;cursor:pointer;padding:10px 18px;border-radius:12px;font-size:15px;font-weight:600;color:var(--on);background:var(--acc);white-space:nowrap}
 .join{display:grid;gap:10px;margin-top:6px}
-.join label{font-weight:600;font-size:18px;text-align:center}
+.join label{font-weight:600;font-size:16px;text-align:center}
 .join div{display:flex;gap:10px}
-.join input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
-.join .join-note{font-size:13.5px;text-align:center}
+.join input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.join .join-note{font-size:12.5px;text-align:center}
 .join-msg{min-height:1.2em;text-align:center;color:var(--ink)!important}
 @media(max-width:520px){.dlg{padding:30px 18px 20px}.dlg h2{font-size:24px}.join div{flex-direction:column}}
 .sg-c{display:flex;gap:10px;align-items:center;justify-content:space-between}
