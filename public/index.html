@@ -158,6 +158,7 @@ h2{font-weight:700}
 .dlg h2{margin:0;font-size:24px;text-align:center}
 .dlg h3{margin:0;font-size:18px;text-align:center}
 .dlg p,.dlg ol{margin:0;color:var(--soft);font-size:14.5px;line-height:1.45}
+.dlg .dlg-lead{text-align:center;font-size:16px;font-weight:600;color:var(--ink)}
 .dlg-x{all:unset;cursor:pointer;position:absolute;top:12px;right:16px;font-size:28px;line-height:1;color:var(--soft);padding:4px 8px;border-radius:8px}
 .dlg-look{all:unset;cursor:pointer;justify-self:center;font-size:15px;color:var(--soft);text-decoration:underline;padding:4px}
 #cmdBox{display:grid;gap:12px}
@@ -295,12 +296,13 @@ main{max-width:1680px}
     <div class="dlg">
       <button class="dlg-x" id="dlgX" type="button" aria-label="Close">×</button>
       <h2 id="dlgTitle">Welcome to Token Tally</h2>
-      <p>Your AI agents have been busy. Token Tally keeps the receipts: days, hours, agents and tokens for every product you build with Claude Code and Codex, plus tips to spend fewer tokens next time.</p>
+      <p class="dlg-lead">Your AI agents have been busy.</p>
+      <p>Token Tally keeps the receipts: days, hours, agents and tokens for every product you build with Claude Code and Codex, plus tips to spend fewer tokens next time.</p>
       <p>The dashboard behind this box is a demo with pretend products. Go ahead and poke around.</p>
       <form class="join" id="signup">
         <label for="joinEmail" id="joinLabel">Enter your email to get the install command</label>
         <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com"><button type="submit">Continue</button></div>
-        <p class="join-note">We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
+        <p class="join-note">We save only your email, to count users and send rare updates.</p>
         <p class="join-msg" id="joinMsg" role="status"></p>
       </form>
       <div id="cmdBox" hidden>
