@@ -140,22 +140,28 @@ h2{font-weight:700}
 #mapin>.col:first-child{justify-content:center;gap:52px}
 #mapin>.col:first-child .lab{min-height:104px;display:grid;align-content:center;gap:2px;padding:12px 14px}
 #save[hidden]{display:none}
-#demo[hidden],#demoPanel[hidden],#join[hidden],#cmdBox[hidden]{display:none}
-#cmdBox{display:grid;gap:10px}
-.demo{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center;padding:12px 18px;border-radius:16px;background:var(--acc);color:var(--on)}
-.demo p{margin:0;font-size:15px}
-.demo-go{all:unset;cursor:pointer;padding:7px 16px;border-radius:999px;font-weight:600;font-size:14px;background:var(--on);color:var(--acc)}
-.demo-go:focus-visible{outline:2px solid var(--ink)}
-.demo-panel{display:grid;gap:10px;max-width:760px;justify-self:center;width:100%}
-.demo-panel h2,.demo-panel h3{margin:0;text-align:center}
-.demo-panel p,.demo-panel ol{margin:0;color:var(--soft);font-size:15px}
-.cmd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 10px 10px 16px;border-radius:14px;box-shadow:var(--press)}
-.cmd code{font:600 14.5px var(--mono);overflow-wrap:anywhere}
-.cmd button,.join button{all:unset;cursor:pointer;padding:8px 14px;border-radius:11px;font-size:14px;font-weight:600;color:var(--on);background:var(--acc);white-space:nowrap}
-.join{display:grid;gap:8px}
+#demo[hidden],#demoPanel[hidden],#signup[hidden],#cmdBox[hidden]{display:none}
+.demo{display:flex;justify-content:center}
+.demo-go{all:unset;cursor:pointer;padding:10px 22px;border-radius:999px;font-weight:600;font-size:15px;background:var(--acc);color:var(--on)}
+.demo-go:focus-visible,.dlg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.demo-panel{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(10,20,40,.28);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);overflow:auto}
+.dlg{position:relative;display:grid;gap:14px;width:100%;max-width:600px;padding:36px 36px 26px;border-radius:24px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.dlg h2{margin:0;font-size:30px;text-align:center}
+.dlg h3{margin:0;font-size:20px;text-align:center}
+.dlg p,.dlg ol{margin:0;color:var(--soft);font-size:16px;line-height:1.5}
+.dlg-x{all:unset;cursor:pointer;position:absolute;top:12px;right:16px;font-size:28px;line-height:1;color:var(--soft);padding:4px 8px;border-radius:8px}
+.dlg-look{all:unset;cursor:pointer;justify-self:center;font-size:15px;color:var(--soft);text-decoration:underline;padding:4px}
+#cmdBox{display:grid;gap:12px}
+.cmd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 12px 12px 18px;border-radius:14px;box-shadow:var(--press)}
+.cmd code{font:600 15px var(--mono);overflow-wrap:anywhere}
+.cmd button,.join button{all:unset;cursor:pointer;padding:12px 22px;border-radius:12px;font-size:16px;font-weight:600;color:var(--on);background:var(--acc);white-space:nowrap}
+.join{display:grid;gap:10px;margin-top:6px}
+.join label{font-weight:600;font-size:18px;text-align:center}
 .join div{display:flex;gap:10px}
-.join input{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 12px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.join input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.join .join-note{font-size:13.5px;text-align:center}
 .join-msg{min-height:1.2em;text-align:center;color:var(--ink)!important}
+@media(max-width:520px){.dlg{padding:30px 18px 20px}.dlg h2{font-size:24px}.join div{flex-direction:column}}
 .sg-c{display:flex;gap:10px;align-items:center;justify-content:space-between}
 .sg{display:grid;font-size:13.5px}
 .sg small{color:var(--mut);font-size:12px}
@@ -272,27 +278,33 @@ main{max-width:1680px}
 <main>
   <div class="top"><div class="hd"><span class="pill" id="pill"><i></i><span>READING LOGS</span></span><span class="clock" id="clock"></span></div><h1>Token Tally</h1><div class="rt"><div class="seg" id="seg"><button data-k="all" class="on">All</button><button data-k="claude">Claude</button><button data-k="codex">Codex</button></div><button class="tb" id="theme"></button></div></div>
   <section class="demo" id="demo" hidden>
-    <p><b>You are looking at a demo.</b> All products and numbers are made up.</p>
     <button class="demo-go" id="demoGo">Use it with your own data →</button>
   </section>
-  <section class="card demo-panel" id="demoPanel" hidden>
-    <h2>Use Token Tally with your own data</h2>
-    <p>Token Tally runs on your own computer and reads the logs that Claude Code and Codex already keep there. Your numbers never leave your computer.</p>
-    <form class="join" id="join">
-      <h3>Enter your email to get the install command</h3>
-      <p>We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
-      <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com" aria-label="Your email"><button type="submit">Continue</button></div>
-      <p class="join-msg" id="joinMsg" role="status"></p>
-    </form>
-    <div id="cmdBox" hidden>
-      <ol>
-        <li>Install Node.js 20 or newer from nodejs.org, if you do not have it.</li>
-        <li>Open Terminal and paste this line:</li>
-      </ol>
-      <div class="cmd"><code id="cmd">npx -y @manyatamanocha/token-tally</code><button id="copy" type="button">Copy</button></div>
-      <ol start="3"><li>Type y when it asks to connect to Claude Code. Your live dashboard then opens in your browser.</li></ol>
+  <div class="demo-panel" id="demoPanel" hidden role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg">
+      <button class="dlg-x" id="dlgX" type="button" aria-label="Close">×</button>
+      <h2 id="dlgTitle">Welcome to Token Tally</h2>
+      <p>See how much Claude Code and Codex work went into each of your products: days, hours, agents and tokens, plus tips to save tokens.</p>
+      <p>Behind this box is a demo with example products and numbers.</p>
+      <form class="join" id="signup">
+        <label for="joinEmail">Enter your email to get the install command</label>
+        <div><input type="email" id="joinEmail" required maxlength="254" placeholder="you@example.com"><button type="submit">Continue</button></div>
+        <p class="join-note">We save only your email, to count users and send rare updates. You can ask us to delete it at any time.</p>
+        <p class="join-msg" id="joinMsg" role="status"></p>
+      </form>
+      <div id="cmdBox" hidden>
+        <h3>Install Token Tally</h3>
+        <p>It runs on your own computer and reads the logs that Claude Code and Codex already keep there. Your numbers never leave your computer.</p>
+        <ol>
+          <li>Install Node.js 20 or newer from nodejs.org, if you do not have it.</li>
+          <li>Open Terminal and paste this line:</li>
+        </ol>
+        <div class="cmd"><code id="cmd">npx -y @manyatamanocha/token-tally</code><button id="copy" type="button">Copy</button></div>
+        <ol start="3"><li>Type y when it asks to connect to Claude Code. Your live dashboard then opens in your browser.</li></ol>
+      </div>
+      <button class="dlg-look" id="dlgLook" type="button">Look at the demo first</button>
     </div>
-  </section>
+  </div>
   <section class="card" id="empty" hidden></section>
   <div id="body" hidden>
     <div id="notes"></div>
@@ -882,20 +894,27 @@ themeBtn.addEventListener('click', () => { setTheme(NEXT[themeBtn.dataset.t]); f
 addEventListener('resize', () => { layout(); if (data?.sessionCount) llmGraph(); });
 
 /* Demo mode */
+function openDlg() { $('demoPanel').hidden = false; document.body.style.overflow = 'hidden'; setTimeout(() => ($('signup').hidden ? $('copy') : $('joinEmail')).focus({ preventScroll: true }), 30); }
+function closeDlg() { $('demoPanel').hidden = true; document.body.style.overflow = ''; $('demoGo').focus({ preventScroll: true }); }
 function demoNote(text) {
-  $('demoPanel').hidden = false;
+  openDlg();
   $('joinMsg').textContent = text;
 }
 if (DEMO) {
   $('demo').hidden = false;
-  $('demoGo').addEventListener('click', () => { $('demoPanel').hidden = !$('demoPanel').hidden; if (!$('demoPanel').hidden) $('demoPanel').scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' }); });
+  $('demoGo').addEventListener('click', openDlg);
+  $('dlgX').addEventListener('click', closeDlg);
+  $('dlgLook').addEventListener('click', closeDlg);
+  $('demoPanel').addEventListener('click', (e) => { if (e.target === $('demoPanel')) closeDlg(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('demoPanel').hidden) closeDlg(); });
+  openDlg();
   $('copy').addEventListener('click', async (e) => {
     try { await navigator.clipboard.writeText($('cmd').textContent); e.target.textContent = 'Copied'; } catch { e.target.textContent = 'Select and copy'; }
     setTimeout(() => { e.target.textContent = 'Copy'; }, 1800);
   });
-  const unlock = () => { $('join').hidden = true; $('cmdBox').hidden = false; };
+  const unlock = () => { $('signup').hidden = true; $('cmdBox').hidden = false; };
   try { if (localStorage.getItem('tt-joined') === '1') unlock(); } catch { /* Ask again next time. */ }
-  $('join').addEventListener('submit', async (e) => {
+  $('signup').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('joinEmail').value.trim();
     const msg = $('joinMsg');
